@@ -131,14 +131,15 @@ export const zh = {
   // ---- 统计卡的三条副标题（原型：签到奖励 / 净 ±Y / 最早 D+N 天后）----
   /* ★ issue #186：`total` 是部分和（额度不可解析的账号不计入），必须把未知数说出来。 */
   "trae.stats.credits.accountsHintPartial": "{count} 个账号 · 其中 {unknown} 个额度未知（未计入）",
-  "trae.stats.credits.inHint": "签到入账",
+  "trae.stats.credits.inHint": "已记录的入账",
   "trae.stats.credits.netHint": "净 {net}",
   "trae.stats.credits.soonestHint": "最早 {days} 天后",
   "trae.stats.credits.noExpiryHint": "30 天内无到期",
 
   // ---- 每日积分收支（Trae **两侧都有** ⇒ 双向柱；WB 只有消耗侧）----
   "trae.stats.credits.dailyTitle": "每日积分收支",
-  "trae.stats.credits.dailyNote": "上 = 签到入账　下 = 对话消耗",
+  "trae.stats.credits.dailyNote": "上 = 已知入账　下 = 按余额估算的消耗",
+  "trae.stats.credits.balanceNote": "{{first}} → {{last}}（已记录的余额）",
   "trae.stats.credits.dailyAria": "每日积分收支双向柱状图（上为入账、下为消耗）",
   "trae.stats.credits.expiryEmpty": "未来 30 天内没有积分到期。",
 
