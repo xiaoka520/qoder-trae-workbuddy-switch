@@ -147,6 +147,12 @@ export interface GatewayTokenTrend {
   total: number;
 }
 
+/** 同一批成功请求的输出 Token 与整次请求耗时。 */
+export interface OutputThroughput {
+  outputTokens: number;
+  durationMs: number;
+}
+
 /** 网关维度桶的一条（模型 / 账号 / 端点共用形状，键名按维度不同）。 */
 export interface GatewayDimEntry {
   /** `models[]` 的键（空模型落 `__unknown__` 哨兵）。 */
@@ -165,6 +171,8 @@ export interface GatewayDimEntry {
   input: number;
   output: number;
   total: number;
+  /** 仅模型维度输出。历史账本或缺少有效样本时为空。 */
+  throughput?: OutputThroughput | null;
   /**
    * 命中上游前缀缓存的输入 token（`input` 的**子集**，不参与 `total`）。
    *

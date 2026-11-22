@@ -1681,11 +1681,12 @@ function ledgerModelTable(L, book, win) {
     <div class="card-head"><h3>${client ? "客户端账本" : "网关账本"}</h3><div class="grow"></div>
       <span class="sub">${client ? "扫本机会话日志 · 不含网关转发" : `网关记账 · 覆盖 ${L.gateway.coverage}`}</span></div>
     <div class="tbl-wrap"><table class="tbl">
-      <thead><tr><th>模型</th><th>分布</th><th>Token</th><th>占比</th><th>请求</th>${client ? "" : "<th>失败</th>"}</tr></thead>
-      <tbody>${models.map((m) => `<tr>
+      <thead><tr><th>模型</th><th>分布</th><th>Token</th><th>平均 token/s</th><th>占比</th><th>请求</th>${client ? "" : "<th>失败</th>"}</tr></thead>
+      <tbody>${models.map((m, i) => `<tr>
         <td><b>${esc(m.name)}</b></td>
         <td style="width:34%"><div class="lbar"><i style="width:${((m.tokens / max) * 100).toFixed(1)}%;background:${client ? LEDGER_CLIENT : LEDGER_GATEWAY}"></i></div></td>
         <td class="num">${fmtTok(m.tokens)}</td>
+        <td class="num muted">${client || m.tokens === 0 ? "—" : (47.5 - i * 3.3).toFixed(1)}</td>
         <td class="num muted">${total ? Math.round((m.tokens / total) * 100) : 0}%</td>
         <td class="num muted">${fmt(m.req)}</td>
         ${client ? "" : `<td class="num" style="color:var(--warning)">${m.name === "auto" ? 0 : Math.round(L.gateway.failed * (m.tokens / (total || 1)))}</td>`}

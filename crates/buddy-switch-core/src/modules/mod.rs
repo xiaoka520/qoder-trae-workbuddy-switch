@@ -58,6 +58,7 @@ pub mod migrate;
 pub mod net;
 pub mod oauth;
 pub mod official_usage;
+mod output_throughput;
 pub mod process;
 pub mod product;
 // P5 §2.5 · WorkBuddy 程序位表（`ProgramSpec` + `ProgramAdapter` trait）—— 表驱动 + 统一操作面。

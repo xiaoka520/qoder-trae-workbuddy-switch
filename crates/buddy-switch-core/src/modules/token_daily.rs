@@ -66,6 +66,7 @@ use rusqlite::Connection;
 use crate::modules::account;
 use crate::modules::config::{atomic_write, now_ms, store_dir};
 use crate::modules::jsonl_tail;
+use crate::modules::output_throughput::OutputThroughput;
 use crate::modules::region::{gateway_config_file, token_daily_file_for, Region};
 use crate::modules::session::{session_data_dir, workbuddy_db_path_for};
 
@@ -182,6 +183,8 @@ struct DimBucket {
     input: u64,
     #[serde(default)]
     output: u64,
+    #[serde(default, skip_serializing_if = "OutputThroughput::is_empty")]
+    throughput: OutputThroughput,
     /// 命中上游前缀缓存的输入 token（`input` 的**子集**）。
     ///
     /// ★ issue #154：只有这一列能让「按日 / 按账号 / 按密钥的命中率」从环形日志
@@ -606,6 +609,7 @@ struct GatewayRow {
     day: String,
     input: u64,
     output: u64,
+    throughput: OutputThroughput,
     /// 命中上游前缀缓存的输入 token（`input` 的子集）；缺字段/null = 未观测。
     cached: Option<u64>,
     model: String,
@@ -654,6 +658,7 @@ fn parse_gateway_rows(entries: &[Value]) -> Vec<GatewayRow> {
                     .get("completionTokens")
                     .and_then(number_u64)
                     .unwrap_or(0),
+                throughput: OutputThroughput::from_log(value, "totalMs"),
                 /* ★ 与上游 `input` 一样是「原值」：`cachedTokens` 是 `promptTokens` 的
                 **子集**，不需要也不应该在这里做减法 —— 减法只发生在 Anthropic 出口
                 的协议换算（`protocol/anthropic.rs::anthropic_input_tokens`）。
@@ -746,6 +751,7 @@ fn bucket_dim(
         let bucket = out.entry(key_of(row)).or_default();
         bucket.input = bucket.input.saturating_add(row.input);
         bucket.output = bucket.output.saturating_add(row.output);
+        bucket.throughput.add(row.throughput);
         if let Some(cached) = row.cached {
             bucket.cached = bucket.cached.saturating_add(cached);
             bucket.cache_observed = true;
@@ -1568,6 +1574,7 @@ fn apply_dim_write(target: &mut BTreeMap<String, DimBucket>, write: DimWrite) {
                 let entry = target.entry(key).or_default();
                 entry.input = entry.input.saturating_add(bucket.input);
                 entry.output = entry.output.saturating_add(bucket.output);
+                entry.throughput.add(bucket.throughput);
                 entry.cached = entry.cached.saturating_add(bucket.cached);
                 entry.cache_observed |= bucket.cache_observed;
                 entry.requests = entry.requests.saturating_add(bucket.requests);
@@ -1582,9 +1589,12 @@ fn apply_dim_write(target: &mut BTreeMap<String, DimBucket>, write: DimWrite) {
                 （input 来自旧读数、output 来自新读数）。 */
                 let current = entry.input.saturating_add(entry.output);
                 let next = bucket.input.saturating_add(bucket.output);
+                let mut throughput = entry.throughput;
+                throughput.keep_larger_snapshot(bucket.throughput);
                 if next > current {
                     *entry = bucket;
                 }
+                entry.throughput = throughput;
             }
         }
     }
@@ -1823,6 +1833,9 @@ fn dim_groups(map: &BTreeMap<String, DimBucket>, key_name: &str) -> Vec<Value> {
                 "failed": bucket.failed,
                 "credit": (bucket.credit * 1000.0).round() / 1000.0,
             });
+            if key_name == "model" {
+                value["throughput"] = json!(bucket.throughput.observed());
+            }
             value["_sort"] = json!(total);
             value
         })
@@ -1866,6 +1879,42 @@ mod tests {
     use super::*;
     use chrono::Datelike;
     use std::fs;
+
+    #[test]
+    fn gateway_model_throughput_survives_equal_usage_recalculation() {
+        let ts = now_ms();
+        let day = local_date_string(ts).unwrap();
+        let mut log = json!({
+            "ts": ts,
+            "account": "u1",
+            "region": "cn",
+            "model": "m",
+            "status": 200,
+            "promptTokens": 5_000,
+            "completionTokens": 60
+        });
+        let mut record = DayRecord::default();
+        let mut record_log = |log: &Value| {
+            let rows = parse_gateway_rows(std::slice::from_ref(log));
+            apply_gateway_round(
+                &mut record,
+                &rows,
+                Region::Cn,
+                &day,
+                &HashSet::new(),
+                &HashMap::new(),
+                true,
+            );
+            dim_groups(&record.gateway_models, "model").remove(0)
+        };
+        assert_eq!(record_log(&log)["throughput"], Value::Null);
+        log["totalMs"] = json!(1_500);
+        let expected = json!({ "outputTokens": 60, "durationMs": 1_500 });
+        assert_eq!(record_log(&log)["throughput"], expected);
+        let rescanned = record_log(&log);
+        assert_eq!(rescanned["throughput"], expected);
+        assert_eq!(rescanned["total"], 5_060);
+    }
 
     /// 降级计数是**累加**（不是取大）：同一天记两次成功 ⇒ 2。
     ///

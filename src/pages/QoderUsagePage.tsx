@@ -63,7 +63,7 @@ import { seriesColor } from "@/components/usage/palette";
 import type { UsageViewProps } from "@/components/usage/view-param-bar";
 import * as api from "@/lib/api";
 import { creditTrendCaption } from "@/lib/chart-caption";
-import { formatCredits } from "@/components/usage/format";
+import { formatCredits, formatTokenRate } from "@/components/usage/format";
 import { useT } from "@/lib/i18n";
 import { platformOfPath } from "@/lib/platforms/registry";
 import { scopeOf } from "@/lib/scope";
@@ -72,6 +72,7 @@ import { useScope } from "@/lib/use-scope";
 import { useRefreshAction } from "@/lib/use-refresh-action";
 import type { GatewayUsageDim } from "@/lib/types";
 import {
+  averageTokensPerSecond,
   creditDailySeries,
   dimCoverage,
   dimTotals,
@@ -196,7 +197,7 @@ export default function QoderUsagePage({ viewWindow, view = "trend", ledger = "a
       }
     }
     return [...merged.entries()]
-      .map(([model, credits]) => ({ model, credits }))
+      .map(([model, credits]) => ({ model, credits, tokensPerSecond: null }))
       .sort((left, right) => right.credits - left.credits);
   }, [windowDays]);
 
@@ -243,11 +244,12 @@ export default function QoderUsagePage({ viewWindow, view = "trend", ledger = "a
     () =>
       dim
         ? dimTotals(dim, viewWindow, modelKey)
-            .filter((row) => row.credit > 0)
+            .filter((row) => row.credit > 0 || row.throughput != null)
             .map((row) => ({
               model: row.key || t("wbStats.usage.models.unknown"),
               credits: row.credit,
               requests: row.requests,
+              tokensPerSecond: averageTokensPerSecond(row.throughput),
             }))
         : [],
     [dim, viewWindow, t],
@@ -278,6 +280,7 @@ export default function QoderUsagePage({ viewWindow, view = "trend", ledger = "a
         name: row.model,
         credit: row.credits,
         requests: row.requests,
+        tokensPerSecond: row.tokensPerSecond,
       })),
     [gatewayByModel],
   );
@@ -584,7 +587,8 @@ export default function QoderUsagePage({ viewWindow, view = "trend", ledger = "a
   }
 
   /* 模型视图 / 会话视图各自的「窗内有数据但该维度为空」：如实说，不退化成空白。 */
-  const modelsEmpty = view === "models" && activeModels.length === 0;
+  const modelsEmpty =
+    view === "models" && activeModels.length === 0 && (ledger !== "all" || gatewayByModel.length === 0);
   const sessionsEmpty = view === "sessions" && !gatewayOnly && windowSessions.length === 0;
 
   return (
@@ -677,6 +681,11 @@ export default function QoderUsagePage({ viewWindow, view = "trend", ledger = "a
                         <span className="min-w-0 flex-1 truncate font-medium" title={row.model}>
                           {row.model}
                         </span>
+                        {ledger !== "all" ? (
+                          <span className="shrink-0 tabular-nums text-muted-foreground" title={t("wbStats.usage.models.throughputHint")}>
+                            {t("wbStats.usage.models.throughputValue", { value: formatTokenRate(row.tokensPerSecond) })}
+                          </span>
+                        ) : null}
                         <span className="shrink-0 tabular-nums">
                           {t("qoder.page.usage.creditsValue", { value: formatCredits(row.credits) })}
                         </span>
@@ -694,8 +703,8 @@ export default function QoderUsagePage({ viewWindow, view = "trend", ledger = "a
           {/* ★ 两本账的积分表：分母各用各的（跨账本合并占比是假的）。 */}
           {ledger === "all" ? (
             <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-              <CreditLedgerTable book="client" rows={clientTableRows} total={clientCreditTotal} />
-              <CreditLedgerTable book="gateway" rows={gatewayTableRows} total={gatewayCreditTotal} />
+              <CreditLedgerTable book="client" rows={clientTableRows} total={clientCreditTotal} showThroughput />
+              <CreditLedgerTable book="gateway" rows={gatewayTableRows} total={gatewayCreditTotal} showThroughput />
             </div>
           ) : null}
         </>

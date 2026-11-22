@@ -26,6 +26,7 @@ import type {
   GatewayDimEntry,
   GatewayUsageDim,
   GatewayUsageRecon,
+  OutputThroughput,
   TokenStatsGroup,
   TokenStatsSource,
 } from "@/lib/types";
@@ -49,6 +50,22 @@ export function parseLedger(raw: string | null | undefined): UsageLedger {
 /** 窗口内的日期键集合（与 `dailyModelSeries` 同源，保证切片口径一致）。 */
 function windowKeySet(window: UsageWindow): Set<string> {
   return new Set(usageWindowKeys(window));
+}
+
+function sumThroughput(
+  left?: OutputThroughput | null,
+  right?: OutputThroughput | null,
+): OutputThroughput | null {
+  if (left == null) return right ?? null;
+  if (right == null) return left;
+  return {
+    outputTokens: left.outputTokens + right.outputTokens,
+    durationMs: left.durationMs + right.durationMs,
+  };
+}
+
+export function averageTokensPerSecond(sample: OutputThroughput | null): number | null {
+  return sample && sample.durationMs > 0 ? (sample.outputTokens * 1000) / sample.durationMs : null;
 }
 
 /**
@@ -82,6 +99,7 @@ export function dimTotals(
           requests: 0,
           failed: 0,
           credit: 0,
+          throughput: null,
         };
       current.tokens += entry.total;
       current.input += entry.input;
@@ -93,6 +111,7 @@ export function dimTotals(
       }
       current.requests += entry.requests;
       current.credit += entry.credit;
+      current.throughput = sumThroughput(current.throughput, entry.throughput);
       map.set(key, current);
     }
   }
@@ -116,6 +135,7 @@ export interface DimTotal {
   requests: number;
   failed: number;
   credit: number;
+  throughput: OutputThroughput | null;
 }
 
 /**
@@ -422,6 +442,9 @@ export function mergeDims(list: (GatewayUsageDim | null)[]): GatewayUsageDim | n
       current.requests += entry.requests;
       current.failed += entry.failed;
       current.credit += entry.credit;
+      if (entry.throughput) {
+        current.throughput = sumThroughput(current.throughput, entry.throughput);
+      }
     }
   };
 

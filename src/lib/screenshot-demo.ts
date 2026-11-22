@@ -1168,10 +1168,12 @@ function demoGatewayUsageDim(): GatewayUsageDim {
         partial: index === 0,
         models: modelTokens.map((total, i) => {
           const input = Math.round(total * 0.9);
+          const output = total - input;
           return {
             model: models[i],
             input,
-            output: total - input,
+            output,
+            throughput: output > 0 ? { outputTokens: output, durationMs: Math.round(output * (20 + i * 5)) } : null,
             total,
             cached: Math.round(input * (hitRatios[i] ?? 0.8)),
             requests: Math.max(1, Math.round(total / 148000)),

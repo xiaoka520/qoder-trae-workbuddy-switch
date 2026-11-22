@@ -22,7 +22,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useT } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-import { compactTokens, exactTokens, formatCredits } from "./format";
+import { compactTokens, exactTokens, formatCredits, formatTokenRate } from "./format";
 
 /** 账本条的图例色（与 `StackedDailyBar` 的 `palette` 同源）。 */
 export const LEDGER_CLIENT_COLOR = "var(--data-series-emerald)";
@@ -201,6 +201,7 @@ export function LedgerModelTable({
     name: string;
     tokens: number;
     requests: number;
+    tokensPerSecond?: number | null;
     failed?: number;
     /**
      * 该行的缓存命中率（0–1；`null` = 没观测到）。
@@ -228,13 +229,16 @@ export function LedgerModelTable({
         <div className="flex-1" />
         <span className="text-[11.5px] text-muted-foreground">{caption}</span>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="overflow-x-auto p-0">
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b text-[11px] text-muted-foreground">
               <th className="px-4 py-2 text-left font-medium">{t("wbStats.usage.models.colModel")}</th>
               <th className="w-[34%] px-3 py-2 text-left font-medium">{t("wbStats.usage.models.colDist")}</th>
               <th className="px-3 py-2 text-right font-medium">{t("wbStats.usage.models.colTokens")}</th>
+              <th scope="col" className="whitespace-nowrap px-3 py-2 text-right font-medium" title={t("wbStats.usage.models.throughputHint")}>
+                {t("wbStats.usage.models.colThroughput")}
+              </th>
               <th className="px-3 py-2 text-right font-medium">{t("wbStats.usage.models.colShare")}</th>
               <th className="px-3 py-2 text-right font-medium">{t("wbStats.usage.models.colRequests")}</th>
               {client ? null : (
@@ -258,6 +262,9 @@ export function LedgerModelTable({
                   <DistBar value={row.tokens} max={max} color={color} />
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">{compactTokens(row.tokens)}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">
+                  {formatTokenRate(row.tokensPerSecond)}
+                </td>
                 <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
                   {total > 0 ? `${Math.round((row.tokens / total) * 100)}%` : "—"}
                 </td>
@@ -419,11 +426,13 @@ export function CreditLedgerTable({
   book,
   rows,
   total,
+  showThroughput = false,
 }: {
   book: "client" | "gateway";
   /** `requests` 可缺：客户端账的逐模型请求数**不可得**（会话记录只按日给），缺省渲染 `—`。 */
-  rows: { name: string; credit: number; requests?: number }[];
+  rows: { name: string; credit: number; requests?: number; tokensPerSecond?: number | null }[];
   total: number;
+  showThroughput?: boolean;
 }) {
   const t = useT();
   const client = book === "client";
@@ -438,13 +447,18 @@ export function CreditLedgerTable({
         <div className="flex-1" />
         <span className="text-[11.5px] text-muted-foreground">{formatCredits(total)}</span>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="overflow-x-auto p-0">
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b text-[11px] text-muted-foreground">
               <th className="px-4 py-2 text-left font-medium">{t("wbStats.usage.models.colModel")}</th>
               <th className="w-[34%] px-3 py-2 text-left font-medium">{t("wbStats.usage.models.colDist")}</th>
               <th className="px-3 py-2 text-right font-medium">{t("wbStats.usage.credits.col")}</th>
+              {showThroughput ? (
+                <th scope="col" className="whitespace-nowrap px-3 py-2 text-right font-medium" title={t("wbStats.usage.models.throughputHint")}>
+                  {t("wbStats.usage.models.colThroughput")}
+                </th>
+              ) : null}
               <th className="px-3 py-2 text-right font-medium">{t("wbStats.usage.models.colShare")}</th>
               <th className="px-4 py-2 text-right font-medium">{t("wbStats.usage.models.colRequests")}</th>
             </tr>
@@ -462,6 +476,11 @@ export function CreditLedgerTable({
                   <DistBar value={row.credit} max={max} color={color} />
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">{formatCredits(row.credit)}</td>
+                {showThroughput ? (
+                  <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">
+                    {formatTokenRate(row.tokensPerSecond)}
+                  </td>
+                ) : null}
                 <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
                   {total > 0 ? `${Math.round((row.credit / total) * 100)}%` : "—"}
                 </td>

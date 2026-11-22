@@ -113,6 +113,7 @@ import {
 } from "@/lib/usage-charts";
 import {
   clientDailyInWindow,
+  averageTokensPerSecond,
   clientModelTotals,
   dimCoverage,
   dimTotals,
@@ -402,6 +403,7 @@ export default function TraeTokenStatsPage({
               tokens: row.tokens,
               requests: row.requests,
               failed: row.failed,
+              tokensPerSecond: averageTokensPerSecond(row.throughput),
             }))
         : [],
     [dim, viewWindow, t],

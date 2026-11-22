@@ -364,6 +364,7 @@ impl RequestLog {
             "endpoint": text_of("endpoint"),
             "promptTokens": text_of("promptTokens"),
             "completionTokens": text_of("completionTokens"),
+            "totalMs": text_of("totalMs"),
             "cachedTokens": text_of("cachedTokens"),
             "credit": text_of("credit"),
             "keyId": text_of("keyId"),
@@ -729,7 +730,13 @@ mod tests {
 
         // keep = 50（见 `temp_log`）⇒ 环形日志裁到 50，流水必须是 60。
         for _ in 0..60 {
-            log.record(streaming_template().to_value());
+            log.record(
+                RequestMeta {
+                    total_ms: 1_234,
+                    ..streaming_template()
+                }
+                .to_value(),
+            );
         }
         assert_eq!(log.list().len(), 50, "环形日志按 log_keep 裁剪");
 
@@ -761,6 +768,7 @@ mod tests {
             assert!(first.get(key).is_some(), "流水缺少字段 {key}：{first}");
         }
         assert_eq!(first["model"], "hy4");
+        assert_eq!(first["totalMs"], 1_234);
 
         let _ = std::fs::remove_dir_all(&dir);
     }

@@ -13,6 +13,7 @@
  */
 
 import type { ModelSlice } from "@/lib/usage-charts";
+import { useT } from "@/lib/i18n";
 
 import { compactTokens, sharePercent } from "./format";
 import { seriesColor } from "./palette";
@@ -49,7 +50,14 @@ function Sparkline({ values }: { values: number[] }) {
   );
 }
 
-export function ModelRanking({ slices }: { slices: ModelSlice[] }) {
+export function ModelRanking({
+  slices,
+  showThroughput = false,
+}: {
+  slices: ModelSlice[];
+  showThroughput?: boolean;
+}) {
+  const t = useT();
   if (slices.length === 0) return null;
   const total = slices.reduce((sum, slice) => sum + slice.value, 0);
 
@@ -65,6 +73,11 @@ export function ModelRanking({ slices }: { slices: ModelSlice[] }) {
               {slice.name}
             </span>
             <Sparkline values={slice.spark} />
+            {showThroughput ? (
+              <span className="shrink-0 text-muted-foreground" title={t("wbStats.usage.models.throughputHint")}>
+                {t("wbStats.usage.models.throughputValue", { value: "—" })}
+              </span>
+            ) : null}
             <span
               className="shrink-0 tabular-nums"
               title={`${compactTokens(slice.value)} Token`}

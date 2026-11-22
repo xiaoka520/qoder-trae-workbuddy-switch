@@ -42,6 +42,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use crate::modules::config::{atomic_write, now_ms};
+use crate::modules::output_throughput::OutputThroughput;
 use crate::modules::qoder::paths as qoder_paths;
 /* ★ 「按密钥」维度的桶键判据**只留一份**（`token_daily::key_bucket_of`）：三种
 「没有 Key」的区分（键不存在 / 值为 null / 带上归属的 id）必须在两条账本上逐字相同，
@@ -182,6 +183,8 @@ struct DimBucket {
     input: u64,
     #[serde(default)]
     output: u64,
+    #[serde(default, skip_serializing_if = "OutputThroughput::is_empty")]
+    throughput: OutputThroughput,
     /// 命中上游前缀缓存的输入 token（`input` 的子集）。`cache_observed` 独立保存
     /// 「有明确 0」与「全部未观测」的区别；老账本缺列时按未观测读入。
     /// ★ issue #154：账本级命中率的唯一来源（环形日志只覆盖几分钟）。
@@ -206,6 +209,7 @@ impl DimBucket {
     fn add(&mut self, other: &DimBucket) {
         self.input = self.input.saturating_add(other.input);
         self.output = self.output.saturating_add(other.output);
+        self.throughput.add(other.throughput);
         self.cached = self.cached.saturating_add(other.cached);
         self.cache_observed |= other.cache_observed;
         self.requests = self.requests.saturating_add(other.requests);
@@ -217,6 +221,7 @@ impl DimBucket {
     fn merge_max(&mut self, other: &DimBucket) {
         self.input = self.input.max(other.input);
         self.output = self.output.max(other.output);
+        self.throughput.keep_larger_snapshot(other.throughput);
         self.cached = self.cached.max(other.cached);
         self.cache_observed |= other.cache_observed;
         self.requests = self.requests.max(other.requests);
@@ -381,6 +386,7 @@ struct Row {
     status: u16,
     input: u64,
     output: u64,
+    throughput: OutputThroughput,
     /// 命中上游前缀缓存的输入 token（`input` 的子集）。`None` 表示证据不足，
     /// **不是**明确 0；`Some(0)` 才是可计入命中率的实测 miss。
     cached: Option<u64>,
@@ -493,6 +499,8 @@ fn parse_rows(product: LedgerProduct, entries: &[Value]) -> Vec<Row> {
                     .get("completionTokens")
                     .and_then(number_u64)
                     .unwrap_or(0),
+                // Trae / Qoder 在响应收尾时写入整次请求耗时。
+                throughput: OutputThroughput::from_log(value, "latencyMs"),
                 // ★ issue #154：原值（`promptTokens` 的子集），不做减法 —— 减法只在
                 //   Anthropic 出口的协议换算里做。缺字段 / 老条目 = 0 = 没观测到。
                 cached: value.get("cachedTokens").and_then(number_u64),
@@ -549,6 +557,7 @@ fn bucket_rows(
         let bucket = out.entry(key_of(row)).or_default();
         bucket.input = bucket.input.saturating_add(row.input);
         bucket.output = bucket.output.saturating_add(row.output);
+        bucket.throughput.add(row.throughput);
         if let Some(cached) = row.cached {
             bucket.cached = bucket.cached.saturating_add(cached);
             bucket.cache_observed = true;
@@ -759,23 +768,24 @@ fn dim_groups(map: &BTreeMap<String, DimBucket>, key_name: &str) -> Vec<Value> {
         .iter()
         .map(|(key, bucket)| {
             let total = bucket.total();
-            (
-                total,
-                json!({
-                    key_name: key,
-                    "input": bucket.input,
-                    "output": bucket.output,
-                    "total": total,
-                    /* ★ issue #154：命中上游前缀缓存的输入 token（`input` 的子集）。
-                    `null` = 这天没观测到命中（老账本无此列 / 上游没报），**不是 0 命中**
-                    —— 与 `token_daily::dim_groups` 逐字同形，前端一套判据即可。 */
-                    "cached": bucket.cache_observed.then_some(bucket.cached),
-                    "cacheObserved": bucket.cache_observed,
-                    "requests": bucket.requests,
-                    "failed": bucket.failed,
-                    "credit": round3(bucket.credit),
-                }),
-            )
+            let mut value = json!({
+                key_name: key,
+                "input": bucket.input,
+                "output": bucket.output,
+                "total": total,
+                /* ★ issue #154：命中上游前缀缓存的输入 token（`input` 的子集）。
+                `null` = 这天没观测到命中（老账本无此列 / 上游没报），**不是 0 命中**
+                —— 与 `token_daily::dim_groups` 逐字同形，前端一套判据即可。 */
+                "cached": bucket.cache_observed.then_some(bucket.cached),
+                "cacheObserved": bucket.cache_observed,
+                "requests": bucket.requests,
+                "failed": bucket.failed,
+                "credit": round3(bucket.credit),
+            });
+            if key_name == "model" {
+                value["throughput"] = json!(bucket.throughput.observed());
+            }
+            (total, value)
         })
         .collect();
     values.sort_by_key(|(total, _)| std::cmp::Reverse(*total));
@@ -886,6 +896,7 @@ mod tests {
                 status: 200,
                 input: 10,
                 output: 2,
+                throughput: OutputThroughput::default(),
                 cached: Some(9),
                 credit: 0.5,
             },
@@ -900,6 +911,7 @@ mod tests {
                 status: 502,
                 input: 7,
                 output: 1,
+                throughput: OutputThroughput::default(),
                 cached: Some(0),
                 credit: 0.0,
             },
@@ -915,7 +927,8 @@ mod tests {
                 cache_observed: true,
                 requests: 2,
                 failed: 1,
-                credit: 0.5
+                credit: 0.5,
+                ..Default::default()
             }
         );
         let sum = |map: &BTreeMap<String, DimBucket>| {
@@ -944,25 +957,22 @@ mod tests {
     fn watermark_prevents_double_counting() {
         let ts = at_today(9);
         let day = local_date_string(ts).unwrap();
-        let rows: Vec<Row> = vec![Row {
-            ts,
-            day: day.clone(),
-            scope: LedgerScope::Cn,
-            account: "u1".into(),
-            model: "m1".into(),
-            endpoint: "/v1/chat/completions".into(),
-            key: "trae:k1".into(),
-            status: 200,
-            input: 10,
-            output: 2,
-            cached: Some(0),
-            credit: 0.0,
-        }];
-        let first = round(&rows, LedgerScope::Cn, &day, None);
-        assert_eq!(first.total.total(), 12);
-        // 第二轮：水位线 = 上一轮最大 ts ⇒ 同一条不再计入。
-        let second = round(&rows, LedgerScope::Cn, &day, first.next_watermark);
-        assert_eq!(second.total.total(), 0, "已记账的条目不许重复加");
+        let entries = [json!({
+            "ts": ts, "region": "cn", "variant": "trae_cn", "account": "u1",
+            "model": "m1", "status": 200, "latencyMs": 1000, "promptTokens": 10, "completionTokens": 2
+        })];
+        for product in [LedgerProduct::Trae, LedgerProduct::Qoder] {
+            let rows = parse_rows(product, &entries);
+            let first = round(&rows, LedgerScope::Cn, &day, None);
+            assert_eq!(first.total.total(), 12);
+            assert_eq!(
+                dim_groups(&first.models, "model")[0]["throughput"],
+                json!({ "outputTokens": 2, "durationMs": 1000 })
+            );
+            let second = round(&rows, LedgerScope::Cn, &day, first.next_watermark);
+            assert_eq!(second.total.total(), 0, "已记账的条目不许重复加");
+            assert!(second.models.is_empty());
+        }
     }
 
     /// 环形裁剪：窗口滚过去之后，已记的量不能倒退（`Correct` 只对缺失水位线的首次记录使用）。
@@ -982,6 +992,7 @@ mod tests {
             status: 200,
             input,
             output: 0,
+            throughput: OutputThroughput::default(),
             cached: Some(0),
             credit: 0.0,
         };
@@ -1074,6 +1085,7 @@ mod tests {
                 requests: 2,
                 failed: 1,
                 credit: 0.125,
+                ..Default::default()
             },
         );
         map.insert(
@@ -1086,6 +1098,7 @@ mod tests {
                 requests: 7,
                 failed: 0,
                 credit: 0.0,
+                ..Default::default()
             },
         );
         let rows = dim_groups(&map, "model");

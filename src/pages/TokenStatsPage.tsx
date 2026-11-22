@@ -105,6 +105,7 @@ import {
 } from "@/lib/usage-charts";
 import {
   accountKey,
+  averageTokensPerSecond,
   clientModelTotals,
   combinedFormula,
   combinedTotal,
@@ -473,6 +474,7 @@ function ModelsView({
         tokens: model.tokens,
         requests: model.requests,
         failed: model.failed,
+        tokensPerSecond: averageTokensPerSecond(model.throughput),
         /* ★ issue #154：命中率 = `cached / input`（分母是**输入侧**，不含输出）。
            `cached === 0 && input === 0` ⇒ null（没观测到），别写成 0%。 */
         hitRate: model.observed && model.observedInput > 0 ? model.cached / model.observedInput : null,
@@ -519,7 +521,7 @@ function ModelsView({
           ariaLabel={t("wbStats.usage.models.clientBook")}
           exportable={false}
         >
-          <ModelRanking slices={modelSlices(source, viewWindow)} />
+          <ModelRanking slices={modelSlices(source, viewWindow)} showThroughput />
         </ChartFrame>
       ) : null}
       {ledger !== "client" ? (

@@ -12,6 +12,7 @@ const compact = new Intl.NumberFormat("en-US", {
 });
 
 const exact = new Intl.NumberFormat("en-US");
+const tokenRate = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
 
 const credits = new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 2 });
 
@@ -25,6 +26,11 @@ export function compactTokens(value: number | null | undefined): string {
 export function exactTokens(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return "—";
   return exact.format(value);
+}
+
+export function formatTokenRate(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return "—";
+  return value > 0 && value < 0.1 ? "<0.1" : tokenRate.format(value);
 }
 
 /** 积分（最多两位小数）。 */
