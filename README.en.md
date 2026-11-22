@@ -198,7 +198,7 @@ flowchart TB
 >
 > The npm package is not published yet, so `npm i -g` will not install it; use a prebuilt CLI binary from Releases or the source build steps below for webui.
 >
-> The Docker form is **server-only**: switching client login state, launching the client, the tray and the floating window all need a **graphical client on the same machine**, so none of them work inside the container.
+> The Docker image includes CodeBuddy Code and Qoder CLI. Desktop account switching, launching graphical clients, the tray and the floating window still require a local desktop client.
 
 ## Quick start
 
