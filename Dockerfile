@@ -8,9 +8,8 @@
 # 三个 API 网关入口（WorkBuddy / Trae / 统一）。它自带账号库与网关 Key，
 # 数据落在 `BUDDY_SWITCH_HOME`（默认 `/data`）。
 #
-# **不是**：桌面客户端。切换客户端登录态、导入本机账号、重启客户端、托盘、悬浮窗
-# 这些能力依赖**同机的图形客户端**，容器里一律不可用（webui 上会显示为不可用/无数据）。
-# 换句话说：镜像里能用的是「多账号 API 网关 + 管理面板」，不是「桌面切换器」。
+# 镜像也提供 CodeBuddy Code（WorkBuddy 的 CLI 接入）和 Qoder CLI。
+# 桌面客户端的登录态切换、重启、托盘和悬浮窗仍依赖图形客户端。
 #
 # ## 构建顺序（不可颠倒）
 #
@@ -77,21 +76,32 @@ RUN cargo build --release -p buddy-switch-server \
     && strip target/release/buddy-switch
 
 # =============================================================================
-# 阶段 3 · 运行时
+# 阶段 3 · 官方终端客户端
+# =============================================================================
+FROM node:22-bookworm-slim AS client-cli
+
+RUN npm install --global --prefix /opt/buddy-switch-cli --no-audit --no-fund \
+    @tencent-ai/codebuddy-code@2.185.0 @qoder-ai/qodercli@1.1.95
+
+# =============================================================================
+# 阶段 4 · 运行时
 # =============================================================================
 FROM debian:bookworm-slim AS runtime
 
 # ca-certificates 是**必需**的：全部上游都是 HTTPS，缺了它所有出站请求都会以
 # 「证书校验失败」告终（表现为网关全 502，而容器日志里看不出是缺 CA）。
 # curl 只服务 compose 的 healthcheck（slim 镜像里没有 wget/curl）。
+# git 供终端客户端使用，pgrep 供本地程序的状态和写回守卫使用。
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && apt-get install -y --no-install-recommends ca-certificates curl git procps \
     && rm -rf /var/lib/apt/lists/*
 
 # 非 root 运行。
 RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin buddy
 
 COPY --from=builder /src/target/release/buddy-switch /usr/local/bin/buddy-switch
+COPY --from=client-cli /usr/local/bin/node /usr/local/bin/node
+COPY --from=client-cli /opt/buddy-switch-cli /opt/buddy-switch-cli
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
@@ -105,8 +115,16 @@ VOLUME ["/data"]
 USER buddy
 WORKDIR /data
 
+# 使用临时主目录运行安装检查，避免把 CLI 初始化文件写入数据卷。
+RUN cli_home="$(mktemp -d)" \
+    && HOME="$cli_home" /opt/buddy-switch-cli/bin/codebuddy --version \
+    && HOME="$cli_home" /opt/buddy-switch-cli/bin/qoder --version \
+    && rm -rf "$cli_home"
+
 # 容器内必须绑 0.0.0.0，否则宿主访问不到（CLI 默认 127.0.0.1）。
-ENV BUDDY_SWITCH_HOME=/data \
+ENV HOME=/data \
+    PATH=/opt/buddy-switch-cli/bin:$PATH \
+    BUDDY_SWITCH_HOME=/data \
     BUDDY_SWITCH_HOST=0.0.0.0 \
     BUDDY_SWITCH_PORT=57890
 
