@@ -1581,7 +1581,7 @@ export default function SettingsPage() {
 
           {section === "checkin" && (
             <>
-              <AutoCheckinCard />
+              {region === "cn" && <AutoCheckinCard />}
               {/* 「积分与轮换」组：轮换卡原本挂在「客户端」，与原型 :1701-1708 的分组不符
                   （原型把轮换归在「签到与积分」⇒ 客户端只留检测）。 */}
               <TravelSettingsCard />

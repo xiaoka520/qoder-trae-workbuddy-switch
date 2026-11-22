@@ -530,7 +530,7 @@ export default function AggregateAccountsPage() {
        · Qoder：只有单账号 `qoderCheckinClaim(scope, uid)` ⇒ 前端循环。
      把三者写成「都循环一遍」会让 Trae 侧白白发 N 次请求。 */
   const batchCheckin = useCallback(async () => {
-    const targets = accounts.filter((account) => selected.has(account.ref));
+    const targets = accounts.filter((account) => selected.has(account.ref) && account.scope !== "wb-global");
     if (targets.length === 0) return;
     let ok = 0;
     let fail = 0;
@@ -975,7 +975,7 @@ export default function AggregateAccountsPage() {
             travelStatus={signals?.travel.get(item.data.id)}
             /* ★ issue #89 · B6：与账号页共用一个判据（见 `priorityIdByScope`）。 */
             creditPriority={item.data.id === priorityIdByScope.get(`workbuddy:${item.scope}`)}
-            onCheckin={() => void checkinOne(item)}
+            onCheckin={item.scope === "wb-cn" ? () => void checkinOne(item) : undefined}
             onRefreshPart={(_account, kind) => void refreshPart(item, kind)}
             refreshingKinds={refreshBusy.kindsOf(item.ref)}
             doneKinds={refreshBusy.doneKindsOf(item.ref)}
@@ -1490,7 +1490,7 @@ export default function AggregateAccountsPage() {
         else if (detailAccount.platform === "trae") checkinTrae(detailAccount);
         else void checkinQoder(detailAccount);
       },
-      showCheckin: checkedIn === false,
+      showCheckin: detailAccount.scope !== "wb-global" && checkedIn === false,
       onExport: () => setExportTarget(detailAccount),
       /* 诊断区是**单作用域**页面 ⇒ 必须带该账号自己的 scope 与子项锚点。 */
       onPermission: () => navigate(`/s/${detailAccount.scope}/settings?section=diagnostics`),
@@ -1923,9 +1923,11 @@ export default function AggregateAccountsPage() {
           <div className="flex-1" />
           {/* 批量动作：**只摆真能做的**（Qoder 没有批量签到命令，由 `batchCheckin` 内部循环）。
               导出需要选目录的对话框，聚合页暂不提供 —— 少一个按钮比摆一个点不动的强。 */}
-          <Button size="sm" variant="outline" onClick={() => void batchCheckin()}>
-            {t("shared.batch.checkin")}
-          </Button>
+          {accounts.some((account) => selected.has(account.ref) && account.scope !== "wb-global") && (
+            <Button size="sm" variant="outline" onClick={() => void batchCheckin()}>
+              {t("shared.batch.checkin")}
+            </Button>
+          )}
           {/* ★ issue #89 · 2.3：批量删除同样先确认（此前点一下就删）。 */}
           <Button
             size="sm"

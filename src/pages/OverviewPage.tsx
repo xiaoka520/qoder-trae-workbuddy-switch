@@ -141,7 +141,7 @@ export default function OverviewPage() {
   const accountIdsKey = useMemo(() => slice.accounts.map((a) => a.id).join("|"), [slice.accounts]);
 
   useEffect(() => {
-    if (!accountIdsKey) {
+    if (region !== "cn" || !accountIdsKey) {
       setCheckinMap({});
       return;
     }
@@ -151,7 +151,9 @@ export default function OverviewPage() {
         const entries = await api.getCheckinStatusMap(accountIdsKey.split("|"), region);
         if (cancelled) return;
         const next: Record<string, boolean> = {};
-        for (const [id, entry] of Object.entries(entries)) next[id] = entry.todayCheckedIn === true;
+        for (const [id, entry] of Object.entries(entries)) {
+          if (entry.ok) next[id] = entry.todayCheckedIn === true;
+        }
         setCheckinMap(next);
       } catch {
         /* 读不到签到态 ⇒ 那条不显示（见上方注释）。 */
@@ -185,7 +187,7 @@ export default function OverviewPage() {
    *    （看起来像「签到没生效」）。
    */
   async function runOneClickCheckin(ids: string[]) {
-    if (checkinBusy || ids.length === 0) return;
+    if (region !== "cn" || checkinBusy || ids.length === 0) return;
     setCheckinBusy(true);
     const toastId = toast.loading(t("wbOverview.toast.checkinLoading"));
     try {
@@ -205,7 +207,9 @@ export default function OverviewPage() {
       const entries = await api.getCheckinStatusMap(ids, region).catch(() => null);
       if (entries) {
         const next: Record<string, boolean> = {};
-        for (const [id, entry] of Object.entries(entries)) next[id] = entry.todayCheckedIn === true;
+        for (const [id, entry] of Object.entries(entries)) {
+          if (entry.ok) next[id] = entry.todayCheckedIn === true;
+        }
         setCheckinMap((prev) => ({ ...prev, ...next }));
       }
       await refreshCredits(ids, { region });
@@ -299,7 +303,9 @@ export default function OverviewPage() {
 
     /* ★ 「今日未签到」——只在**拿到签到态**（`checkinMap` 非空）时才说：
        空 map 表示「还没取到 / 取不到」⇒ 不显示，不拿未知冒充「未签到」。 */
-    const notChecked = slice.accounts.filter((a) => !a.needsRelogin && checkinMap[a.id] === false);
+    const notChecked = region === "cn"
+      ? slice.accounts.filter((a) => !a.needsRelogin && checkinMap[a.id] === false)
+      : [];
     if (notChecked.length > 0) {
       const ids = notChecked.map((a) => a.id);
       list.push({
@@ -363,6 +369,7 @@ export default function OverviewPage() {
     t,
     accountsHref,
     settingsHref,
+    region,
     checkinMap,
     checkinBusy,
     expiringCredits,
