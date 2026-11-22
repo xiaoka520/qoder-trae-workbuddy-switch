@@ -102,7 +102,8 @@ runner，再由 merge job 拼 manifest）。手动触发该工作流只产出 `e
 
 镜像内的 `codebuddy` 是腾讯的 CodeBuddy Code，复用 Buddy Switch 国内版 WorkBuddy 的
 CLI 接入。可以在账号页配置 CLI helper 或接入 WorkBuddy 网关，也可以直接在终端使用。
-`qoder` 和 `qodercli` 来自 Qoder 官方 npm 包，首次使用时按 CLI 的提示授权。
+`qoder` 和 `qodercli` 来自 Qoder 官方 npm 包。Qoder 国际版的客户端检测会将可执行的
+`qodercli` 显示为已安装。首次使用时按 CLI 的提示授权，管理面从凭据文件读取登录状态。
 
 ```sh
 docker exec -it buddy-switch codebuddy
