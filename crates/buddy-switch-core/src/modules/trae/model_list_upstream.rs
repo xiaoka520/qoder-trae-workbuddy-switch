@@ -327,7 +327,7 @@ pub async fn refresh(variant: TraeVariant) -> Result<Vec<ClientModel>, String> {
     let url = format!("{IDE_BASE_CN}{DETAIL_PARAM_PATH}");
     let body = serde_json::json!({ "functions": FUNCTIONS });
 
-    let mut request = crate::modules::trae::credits::trae_http_client()
+    let mut request = crate::modules::trae::credits::trae_http_client()?
         .post(&url)
         .json(&body);
     for (key, value) in headers {

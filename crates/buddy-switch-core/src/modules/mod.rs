@@ -12,6 +12,7 @@ pub mod agent_hook_install;
 // L0 应用级偏好里**宿主也要读**的那一类（如「关闭窗口是否隐藏到托盘」）——
 // 纯渲染层的偏好留在 `localStorage`，别搬进来（见模块头）。
 pub mod app_prefs;
+pub mod app_proxy;
 pub mod at_rest;
 pub mod auth_file;
 pub mod backup;

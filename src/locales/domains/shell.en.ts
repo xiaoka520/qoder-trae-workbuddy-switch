@@ -127,6 +127,11 @@ export const en = {
 
   // ---- App-level settings (settings page "General" + top-bar gear drawer; one implementation, two shells) ----
   "appSettings.drawer.more": "More",
+  "appSettings.network.title": "Network",
+  "appSettings.network.proxyLabel": "Outbound proxy",
+  "appSettings.network.proxyDescription": "Used for account authorization, credit queries, and API gateway requests. Enter the proxy address and port. Clear the address and save to turn off the app proxy.",
+  "appSettings.network.proxySave": "Save",
+  "appSettings.network.proxySaved": "Outbound proxy settings saved",
 
   "appSettings.appearance.title": "Appearance",
   "appSettings.appearance.theme.label": "Theme",

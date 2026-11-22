@@ -78,19 +78,11 @@ fn qoder_region_candidates(region: QoderRegion) -> Vec<&'static str> {
     qoder_region::gateway_candidates(region)
 }
 
-/// 出站 HTTP 客户端。
-///
-/// 与 Trae 侧的构造**同款**（刻意各持一份，见 `trae/mod.rs` 的同名函数）：
-/// 只设 `connect_timeout` 与 `read_timeout`，**不设总超时** —— SSE 对话的合法时长
-/// 由模型输出长度决定，加总超时会把正常的长回答掐断。
+/// 缺省直连客户端。显式应用代理由各出站请求在发送前取用。
 fn build_http_client() -> reqwest::Client {
-    reqwest::Client::builder()
-        .no_proxy()
-        .connect_timeout(std::time::Duration::from_secs(10))
-        .read_timeout(std::time::Duration::from_secs(300))
-        .pool_max_idle_per_host(20)
+    crate::relay_client_builder()
         .build()
-        .unwrap_or_else(|_| reqwest::Client::new())
+        .expect("failed to build relay HTTP client")
 }
 
 fn default_true() -> bool {

@@ -87,6 +87,71 @@ function GroupBody({ variant, children }: { variant: AppSettingsVariant; childre
   return <CardContent className="space-y-0 p-0">{children}</CardContent>;
 }
 
+function OutboundProxyCard({ variant }: { variant: AppSettingsVariant }) {
+  const t = useT();
+  const [savedUrl, setSavedUrl] = useState<string | null>(null);
+  const [url, setUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void api.getAppProxy().then((config) => {
+      if (cancelled) return;
+      setSavedUrl(config.url);
+      setUrl(config.url);
+    }).catch((error) => {
+      if (!cancelled) setLoadError(api.asError(error));
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  async function save() {
+    setSaving(true);
+    try {
+      const config = await api.setAppProxy(url.trim());
+      setSavedUrl(config.url);
+      setUrl(config.url);
+      toast.success(t("appSettings.network.proxySaved"));
+    } catch (error) {
+      toast.error(api.asError(error));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <SettingsGroup id="settings-outbound-proxy" title={t("appSettings.network.title")} variant={variant}>
+      <GroupBody variant={variant}>
+        <SettingsFieldRow
+          label={t("appSettings.network.proxyLabel")}
+          description={t("appSettings.network.proxyDescription")}
+          htmlFor="app-outbound-proxy"
+          stacked={variant === "plain"}
+        >
+          <form className="flex w-full items-center gap-2" onSubmit={(event) => { event.preventDefault(); void save(); }}>
+            <Input
+              id="app-outbound-proxy"
+              className="min-w-0 flex-1"
+              value={url}
+              onChange={(event) => setUrl(event.target.value)}
+              placeholder="http://192.168.1.1:7890"
+              autoComplete="off"
+              spellCheck={false}
+              disabled={savedUrl === null || saving || api.isDemoMode()}
+            />
+            <Button type="submit" size="sm" variant="outline" disabled={savedUrl === null || savedUrl === url.trim() || saving || api.isDemoMode()}>
+              {saving ? <Loader2 className="animate-spin" /> : <Save />}
+              {t("appSettings.network.proxySave")}
+            </Button>
+          </form>
+        </SettingsFieldRow>
+        {loadError ? <p role="alert" className="px-4 text-xs text-destructive">{loadError}</p> : null}
+      </GroupBody>
+    </SettingsGroup>
+  );
+}
+
 /** 自动更新：检查公开 GitHub Releases 源 + 安装签名更新。 */
 function UpdateCard({ variant }: { variant: AppSettingsVariant }) {
   const t = useT();
@@ -877,6 +942,7 @@ export function AppSettingsGroups({ variant = "card" }: { variant?: AppSettingsV
       {api.isDesktop() || api.isDemoMode() ? <AuthCard variant={variant} /> : null}
       {api.isWebui() && !api.isDemoMode() ? null : <UpdateCard variant={variant} />}
       <ScopeVisibilityCard variant={variant} />
+      <OutboundProxyCard variant={variant} />
       <CreditsAutoRefreshCard variant={variant} />
     </>
   );

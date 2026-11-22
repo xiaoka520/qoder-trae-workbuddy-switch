@@ -125,6 +125,11 @@ export const zh = {
 
   // ---- 应用级设置（设置页「通用」分区 + 顶栏 ⚙「应用设置」抽屉，同一份实现两种外壳）----
   "appSettings.drawer.more": "更多入口",
+  "appSettings.network.title": "网络",
+  "appSettings.network.proxyLabel": "出站代理",
+  "appSettings.network.proxyDescription": "用于账号授权、积分查询和 API 网关请求。填写代理服务的地址和端口。清空并保存可关闭应用代理。",
+  "appSettings.network.proxySave": "保存",
+  "appSettings.network.proxySaved": "出站代理设置已保存",
 
   "appSettings.appearance.title": "外观",
   "appSettings.appearance.theme.label": "主题",

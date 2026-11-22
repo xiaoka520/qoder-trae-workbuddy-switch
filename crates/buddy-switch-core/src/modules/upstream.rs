@@ -367,18 +367,29 @@ pub enum UpstreamChatResult {
 /// 上游 HTTP 客户端。一个实例服务整个网关；凭据逐请求传入。
 pub struct UpstreamClient {
     http: reqwest::Client,
+    app_proxy: super::app_proxy::ClientCache,
 }
 
 impl UpstreamClient {
     /// 用给定的 reqwest 客户端构造。
     pub fn new(http: reqwest::Client) -> Self {
-        Self { http }
+        Self {
+            http,
+            app_proxy: super::app_proxy::ClientCache::new(),
+        }
+    }
+
+    fn client(&self) -> Result<reqwest::Client, String> {
+        self.app_proxy.get(
+            || Ok(self.http.clone()),
+            || reqwest::Client::builder().timeout(std::time::Duration::from_secs(600)),
+        )
     }
 
     /// 所有账号复用网关共享出口；账号配置中的旧代理映射不会参与路由。
     fn client_for_account(&self, acc: &Value) -> Result<reqwest::Client, String> {
         let _ = acc;
-        Ok(self.http.clone())
+        self.client()
     }
 
     /// POST chat 端点；成功返回原始 SSE 响应。
@@ -443,7 +454,17 @@ impl UpstreamClient {
         user_agent: &str,
         method: reqwest::Method,
     ) -> UpstreamChatResult {
-        self.forward_with_method_on(&self.http, url, headers, body, signal, user_agent, method)
+        let http = match self.client() {
+            Ok(client) => client,
+            Err(message) => {
+                return UpstreamChatResult::Err {
+                    status: 0,
+                    kind: UpstreamErrorKind::Server,
+                    message,
+                }
+            }
+        };
+        self.forward_with_method_on(&http, url, headers, body, signal, user_agent, method)
             .await
     }
 

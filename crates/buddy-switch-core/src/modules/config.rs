@@ -1178,7 +1178,11 @@ pub async fn http_request(
     body: Option<Value>,
     headers: Option<&HashMap<String, String>>,
 ) -> Value {
-    http_request_with_proxy(url, method, body, headers, None).await
+    static PROXY_CLIENT: super::app_proxy::ClientCache = super::app_proxy::ClientCache::new();
+    match PROXY_CLIENT.get(|| Ok(direct_client().clone()), http_client_builder) {
+        Ok(client) => send_json_request(&client, url, method, body, headers).await,
+        Err(error) => json!({"code": -1, "message": error}),
+    }
 }
 
 /// 通用 HTTP 请求，可为单次请求显式指定 HTTP/HTTPS 代理。
@@ -1189,7 +1193,6 @@ pub async fn http_request_with_proxy(
     headers: Option<&HashMap<String, String>>,
     proxy: Option<&str>,
 ) -> Value {
-    let method = reqwest::Method::from_bytes(method.as_bytes()).unwrap_or(reqwest::Method::GET);
     let explicit_proxy = proxy.map(str::trim).filter(|value| !value.is_empty());
     let client = match explicit_proxy {
         Some(proxy) => match http_client_builder()
@@ -1206,7 +1209,17 @@ pub async fn http_request_with_proxy(
         // 就让不同账号在无配置情况下共用系统代理出口。
         None => direct_client().clone(),
     };
+    send_json_request(&client, url, method, body, headers).await
+}
 
+async fn send_json_request(
+    client: &reqwest::Client,
+    url: &str,
+    method: &str,
+    body: Option<Value>,
+    headers: Option<&HashMap<String, String>>,
+) -> Value {
+    let method = reqwest::Method::from_bytes(method.as_bytes()).unwrap_or(reqwest::Method::GET);
     /// 发一次（`RequestBuilder` 被 `send()` 消费，重试必须重建）。
     async fn send_once(
         client: &reqwest::Client,
@@ -1228,7 +1241,7 @@ pub async fn http_request_with_proxy(
         req.send().await
     }
 
-    let sent = send_once(&client, &method, url, body.as_ref(), headers).await;
+    let sent = send_once(client, &method, url, body.as_ref(), headers).await;
     /* ★ 未显式指定出口时使用 `direct_client()`：不读环境代理、不做“代理失败后直连”
     的隐式重试。显式代理失败也**绝不回落到直连** —— 否则同一账号的请求会在
     另一个公网出口再出现一次，正好破坏风控隔离。 */

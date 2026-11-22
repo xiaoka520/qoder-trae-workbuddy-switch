@@ -1674,8 +1674,8 @@ async fn send_llm_chat(
     let url = format!("{}{TRAE_LLM_CHAT_PATH}", state.upstream);
     let trace_id = trace_id();
 
-    let response = state
-        .http
+    let client = crate::relay_http_client(&state.http).map_err(|error| (502, error))?;
+    let response = client
         .post(&url)
         .header(header::CONTENT_TYPE, "application/json")
         .header(header::ACCEPT, "*/*")

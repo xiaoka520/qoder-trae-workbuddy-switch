@@ -2372,17 +2372,23 @@ pub fn openapi_headers(
 // ---------------------------------------------------------------------------
 
 /// 进程内复用的 HTTP 客户端（连接池）。
-pub fn shared_client() -> Result<&'static Client, String> {
+pub fn shared_client() -> Result<Client, String> {
+    use crate::modules::app_proxy::ClientCache;
     static CLIENT: OnceLock<Result<Client, String>> = OnceLock::new();
-    CLIENT
-        .get_or_init(|| {
-            Client::builder()
-                .connect_timeout(std::time::Duration::from_secs(15))
-                .build()
-                .map_err(|error| format!("构造 HTTP 客户端失败: {error}"))
-        })
-        .as_ref()
-        .map_err(|error| error.clone())
+    static PROXY: ClientCache = ClientCache::new();
+    let builder = || Client::builder().connect_timeout(std::time::Duration::from_secs(15));
+    PROXY.get(
+        || {
+            CLIENT
+                .get_or_init(|| {
+                    builder()
+                        .build()
+                        .map_err(|error| format!("构造 HTTP 客户端失败: {error}"))
+                })
+                .clone()
+        },
+        builder,
+    )
 }
 
 fn apply_headers(

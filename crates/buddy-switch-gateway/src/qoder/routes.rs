@@ -1194,6 +1194,7 @@ pub(crate) async fn chat_once_for_account(
             .map(|host| host.to_string())
             .collect(),
     };
+    let client = crate::relay_http_client(&state.http)?;
     let mut transport_error = String::new();
     for host in hosts {
         // ★ 发送用 `?Encode=1` 的请求路径，签名仍用**无 query** 的 `PATH_CHAT_SSE`
@@ -1201,8 +1202,7 @@ pub(crate) async fn chat_once_for_account(
         //   上游按 query 决定要不要先解码：裸路径 + 编码体 ⇒ 把自定义 base64 当 JSON
         //   解析 ⇒ HTTP 200 + `event:error`（真机取证 2026-10-17）。
         let url = format!("{host}{PATH_CHAT_SSE_ENCODED}");
-        let mut request = state
-            .http
+        let mut request = client
             .post(&url)
             .timeout(std::time::Duration::from_secs(600))
             .body(encoded.to_string());

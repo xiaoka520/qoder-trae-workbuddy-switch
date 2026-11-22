@@ -61,6 +61,22 @@ pub mod trae;
 // （axum 同路径 merge 会运行期 panic）。详见模块头与 `docs/specs/UNIFIED-GATEWAY-ARCH.md`。
 pub mod unified;
 
+/// Trae 和 Qoder 的流式出口共享连接和读取超时，不设整条回复的总超时。
+fn relay_client_builder() -> reqwest::ClientBuilder {
+    use std::time::Duration;
+    reqwest::Client::builder()
+        .no_proxy()
+        .connect_timeout(Duration::from_secs(10))
+        .read_timeout(Duration::from_secs(300))
+        .pool_max_idle_per_host(20)
+}
+
+fn relay_http_client(default: &reqwest::Client) -> Result<reqwest::Client, String> {
+    use buddy_switch_core::modules::app_proxy::ClientCache;
+    static PROXY: ClientCache = ClientCache::new();
+    PROXY.get(|| Ok(default.clone()), relay_client_builder)
+}
+
 pub use account_strategy::{AccountSelector, AccountStrategy};
 pub use apikey::{ApiKeyRecord, ApiKeyStore};
 pub use disabled_models::{is_disabled, is_disabled_in, DisabledModels};

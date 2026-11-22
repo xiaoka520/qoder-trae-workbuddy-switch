@@ -1085,7 +1085,7 @@ async fn try_exchange_variant(
     platform_code: &str,
     with_cloudide_token: bool,
 ) -> Result<account::ExchangedToken, String> {
-    let client = crate::modules::trae::credits::trae_http_client();
+    let client = crate::modules::trae::credits::trae_http_client()?;
     let mut request = client
         .post(url)
         .header("content-type", "application/json")

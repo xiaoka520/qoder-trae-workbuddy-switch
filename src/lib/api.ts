@@ -202,6 +202,7 @@ const DEMO_READ_COMMANDS = new Set([
   "get_checkin_logs", "get_auto_rotate_config", "rotate_status", "get_rotate_logs",
   "get_github_config", "check_update", "get_launch_at_login_enabled", "switch_progress",
   "get_app_prefs", "set_app_prefs",
+  "get_app_proxy",
   "get_travel_status", "get_auto_travel_config", "get_schedule_config",
   "get_switch_config",
   // P8 T02 · 会话页两个只读命令：演示站必须能渲染副本视图（否则 build:demo 报错）。
@@ -477,6 +478,8 @@ const ROUTES: Record<string, Route> = {
   refresh_account_token: { method: "POST", path: "/api/refresh-token" },
   get_github_config: { method: "GET", path: "/api/update/config" },
   save_github_config: { method: "POST", path: "/api/update/config" },
+  get_app_proxy: { method: "GET", path: "/api/settings/outbound-proxy" },
+  set_app_proxy: { method: "POST", path: "/api/settings/outbound-proxy" },
   check_update: { method: "GET", path: "/api/update/check" },
   switch_progress: { method: "GET", path: "/api/switch/progress" },
   open_accounts_dir: { method: "POST", path: "/api/accounts/open-dir" },
@@ -3104,6 +3107,14 @@ export function diffClientSettings(
 
 export function getGithubConfig(): Promise<GithubConfig> {
   return call("get_github_config");
+}
+
+export function getAppProxy(): Promise<{ url: string }> {
+  return call("get_app_proxy");
+}
+
+export function setAppProxy(url: string): Promise<{ url: string }> {
+  return call("set_app_proxy", { url });
 }
 
 export function saveGithubConfig(config: GithubConfig): Promise<GithubConfig> {

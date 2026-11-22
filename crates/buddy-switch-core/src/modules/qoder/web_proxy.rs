@@ -98,11 +98,11 @@ pub fn validate_url(raw: &str) -> Result<(), String> {
 
 /// 该区域取数用的 HTTP 客户端。
 ///
-/// 无代理 ⇒ 直接复用 [`super::api::shared_client`]（与 openapi 同一条传输层，错误文案同源）；
-/// 有代理 ⇒ 按 URL 缓存的独立客户端（reqwest 的代理是 client 级属性，不能按请求换）。
+/// 留空时复用 [`super::api::shared_client`]，沿用应用的出站代理配置。
+/// 逐包配置指定地址时优先使用该地址，并缓存独立的连接池。
 pub fn client_for(region: QoderRegion) -> Result<Client, String> {
     match WebProxyConfig::load().url_for(region) {
-        None => Ok(super::api::shared_client()?.clone()),
+        None => super::api::shared_client(),
         Some(url) => cached_client(&url),
     }
 }

@@ -9,8 +9,7 @@
 //! - 即使代理活着，请求也会被自己 MITM，日志里出现自我递归的噪声。
 //!
 //! 参考实现在 Python 侧用 `NO_PROXY=*` + 显式空 `ProxyHandler` 解决同一问题。
-//! 这里对应地为本模块的所有请求使用 [`trae_http_client`]（`no_proxy()`），
-//! **不要**改用 `config::http_request`——后者会继承环境代理设置。
+//! 这里通过 [`trae_http_client`] 忽略环境代理，只接受用户在应用设置中明确指定的出口。
 
 use std::collections::HashMap;
 
@@ -28,22 +27,25 @@ use crate::modules::trae::{TRAE_APP_VERSION, TRAE_ENTITLEMENT_PATH};
 // HTTP
 // ---------------------------------------------------------------------------
 
-/// 全局唯一的上游 HTTP 客户端。
-///
-/// 关键配置：
-/// - `no_proxy()`：见模块头注释，绝不能走本地代理。
-/// - 120s 总超时：签到是串行的多账号循环，单账号超时必须显著小于整体容忍时间。
-static TRAE_HTTP: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
-
-/// 取 Trae 上游 HTTP 客户端。
-pub fn trae_http_client() -> &'static reqwest::Client {
-    TRAE_HTTP.get_or_init(|| {
-        reqwest::Client::builder()
-            .no_proxy()
-            .timeout(std::time::Duration::from_secs(120))
-            .build()
-            .expect("failed to build trae http client")
-    })
+/// 签到按账号串行执行，单次请求保留 120 秒上限。
+pub fn trae_http_client() -> Result<reqwest::Client, String> {
+    use crate::modules::app_proxy::ClientCache;
+    static DIRECT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
+    static PROXY: ClientCache = ClientCache::new();
+    let builder = || reqwest::Client::builder().timeout(std::time::Duration::from_secs(120));
+    PROXY.get(
+        || {
+            Ok(DIRECT
+                .get_or_init(|| {
+                    builder()
+                        .no_proxy()
+                        .build()
+                        .expect("failed to build trae http client")
+                })
+                .clone())
+        },
+        builder,
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -248,7 +250,11 @@ pub async fn post_json_for(
     };
     let base = super::endpoints_for(variant).account_base;
     let url = format!("{base}{path}");
-    let mut request = trae_http_client().post(&url).body("{}");
+    let client = match trae_http_client() {
+        Ok(client) => client,
+        Err(error) => return (0, error),
+    };
+    let mut request = client.post(&url).body("{}");
     for (key, value) in build_headers(jwt_value, device) {
         request = request.header(key, value);
     }

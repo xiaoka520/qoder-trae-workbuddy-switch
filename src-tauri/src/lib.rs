@@ -689,6 +689,8 @@ pub fn run() {
             commands::get_rotate_logs,
             commands::get_github_config,
             commands::save_github_config,
+            commands::get_app_proxy,
+            commands::set_app_proxy,
             commands::check_update,
             commands::relaunch_app,
             commands::get_app_prefs,

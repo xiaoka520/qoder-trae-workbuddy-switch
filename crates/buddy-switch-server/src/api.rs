@@ -34,6 +34,7 @@ use buddy_switch_core::modules::agent_watch;
 // P15 · hook 安装面（写上游客户端配置）+ 「宿主也要读」的应用偏好。
 use buddy_switch_core::modules::agent_hook_install;
 use buddy_switch_core::modules::app_prefs;
+use buddy_switch_core::modules::app_proxy::AppProxyConfig;
 use buddy_switch_core::modules::proxy;
 // 运行日志（本工具自身，排查问题用）：读 / 清 / 开目录三件。桌面端有同名命令。
 use buddy_switch_core::modules::runtime_log;
@@ -347,6 +348,10 @@ fn api_routes() -> Router {
         .route(
             "/api/update/config",
             get(api_update_config).post(api_save_update_config),
+        )
+        .route(
+            "/api/settings/outbound-proxy",
+            get(api_get_app_proxy).post(api_set_app_proxy),
         )
         // —— 网关管理面（A-3.7）——
         .route(
@@ -791,6 +796,28 @@ fn api_routes() -> Router {
 
 fn json_ok(v: Value) -> Response {
     Json(v).into_response()
+}
+
+async fn api_get_app_proxy() -> Response {
+    match AppProxyConfig::load() {
+        Ok(config) => (
+            [(axum::http::header::CACHE_CONTROL, "no-store")],
+            Json(config),
+        )
+            .into_response(),
+        Err(error) => json_err(error, StatusCode::INTERNAL_SERVER_ERROR),
+    }
+}
+
+async fn api_set_app_proxy(Json(config): Json<AppProxyConfig>) -> Response {
+    match config.save() {
+        Ok(config) => (
+            [(axum::http::header::CACHE_CONTROL, "no-store")],
+            Json(config),
+        )
+            .into_response(),
+        Err(error) => json_err(error, StatusCode::BAD_REQUEST),
+    }
 }
 
 fn json_err(e: String, code: StatusCode) -> Response {

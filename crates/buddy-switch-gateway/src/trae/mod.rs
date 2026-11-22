@@ -41,7 +41,6 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::sync::OnceLock;
-use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
@@ -553,20 +552,11 @@ impl TraeGatewayState {
     }
 }
 
-/// 出站客户端。
-///
-/// - `no_proxy()`：与 Trae 账号模块同理，绝不能走进本机 MITM 代理，否则请求会在
-///   自己的代理里打转。
-/// - 只设 `connect_timeout` 与 `read_timeout`，**不设总超时**：SSE 对话的合法时长
-///   由模型输出长度决定，加总超时会把正常的长回答掐断。
+/// 缺省直连客户端。显式应用代理由各出站请求在发送前取用。
 fn build_http_client() -> reqwest::Client {
-    reqwest::Client::builder()
-        .no_proxy()
-        .connect_timeout(Duration::from_secs(10))
-        .read_timeout(Duration::from_secs(300))
-        .pool_max_idle_per_host(20)
+    crate::relay_client_builder()
         .build()
-        .unwrap_or_else(|_| reqwest::Client::new())
+        .expect("failed to build relay HTTP client")
 }
 
 /// 确保 Key 库里**至少有一把可用 Key**（load + legacy 优先，都没有才新建）。

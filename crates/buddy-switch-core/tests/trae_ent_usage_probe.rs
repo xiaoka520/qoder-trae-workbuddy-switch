@@ -79,6 +79,7 @@ async fn post_with_body(body: &str, jwt: &str, device: &DeviceEntry) -> (u16, St
         endpoints_for(TraeVariant::default()).account_base
     );
     let mut request = credits::trae_http_client()
+        .expect("Trae 上游 HTTP 客户端应能初始化")
         .post(&url)
         .body(body.to_string());
     for (key, value) in credits::build_headers(jwt, device) {

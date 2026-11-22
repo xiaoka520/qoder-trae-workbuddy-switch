@@ -1567,7 +1567,8 @@ async fn try_refresh_variant(
     plan: &RefreshVariant,
     device_id: Option<&str>,
 ) -> Result<(String, Option<String>, Value), RefreshExchangeError> {
-    let client = crate::modules::trae::credits::trae_http_client();
+    let client = crate::modules::trae::credits::trae_http_client()
+        .map_err(RefreshExchangeError::transport)?;
     let mut request = client
         .post(&plan.url)
         .header("content-type", "application/json")

@@ -30,6 +30,7 @@ use buddy_switch_core::modules::agent_watch;
 // P15 · hook 安装面（写上游客户端配置）。`app_prefs` / `client_settings` 已在文件头
 // 的大括号导入里，此处**不重复引入**。
 use buddy_switch_core::modules::agent_hook_install;
+use buddy_switch_core::modules::app_proxy::AppProxyConfig;
 use buddy_switch_core::modules::proxy;
 use buddy_switch_gateway::{AccountStrategy, GatewayConfig, GatewayStatusView};
 // 统一网关（第三个产品线）：配置 + 命名空间表 + 独立密钥库。
@@ -2451,6 +2452,16 @@ pub fn get_github_config() -> Value {
 pub fn save_github_config(config: Value) -> Result<Value, String> {
     update::save_github_config(&config).map_err(|e| e.to_string())?;
     Ok(update::load_github_config())
+}
+
+#[tauri::command]
+pub fn get_app_proxy() -> Result<AppProxyConfig, String> {
+    AppProxyConfig::load()
+}
+
+#[tauri::command]
+pub fn set_app_proxy(url: String) -> Result<AppProxyConfig, String> {
+    AppProxyConfig { url }.save()
 }
 
 /// GET /api/update/check —— 检查 GitHub Releases 是否有新版本。

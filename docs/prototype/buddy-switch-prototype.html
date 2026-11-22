@@ -11448,6 +11448,11 @@ $("#app-settings-btn").addEventListener("click", () => {
     <div class="srow"><div class="lab"><b>最小化到托盘</b><span>关闭窗口时保持后台运行</span></div><button class="switch on"></button></div>
   </div>
   <div class="dsec">
+    <h4>网络</h4>
+    <label class="srow" for="app-outbound-proxy"><div class="lab"><b>出站代理</b><span>填写代理服务的地址和端口。清空并保存可关闭应用代理。</span></div></label>
+    <div class="srow"><input class="inp" id="app-outbound-proxy" placeholder="http://192.168.1.1:7890"><button class="btn sm">保存</button></div>
+  </div>
+  <div class="dsec">
     <h4>关于与更新</h4>
     <!-- 第二个入口（与侧栏版本行同源）：设置里也得能查一次，不能只留一个角落里的图标。 -->
     <div class="srow">
