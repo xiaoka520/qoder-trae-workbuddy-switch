@@ -37,12 +37,44 @@ use serde_json::json;
 
 /// 额外允许的 `Host`（逗号分隔）环境变量名。
 pub const ALLOWED_HOSTS_ENV: &str = "BUDDY_SWITCH_ALLOWED_HOSTS";
+const DNS_NAME_MAX_LEN: usize = 253;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum AllowedHost {
+    /// 纯主机名允许任意端口，带端口的项要求精确匹配。
+    Exact(String),
+    /// 后缀包含前导点，星号只匹配一个完整的 DNS 标签。
+    Subdomain { suffix: String, port: Option<u16> },
+}
+
+impl AllowedHost {
+    fn parse(entry: &str) -> Option<Self> {
+        let entry = entry.trim().to_ascii_lowercase();
+        if let Some(pattern) = entry.strip_prefix("*.") {
+            let (domain, port) = split_dns_host_port(pattern)?;
+            let (_, last_label) = domain.rsplit_once('.')?;
+            if domain.len() + 2 > DNS_NAME_MAX_LEN
+                || !domain.split('.').all(is_dns_label)
+                || !last_label.bytes().any(|byte| byte.is_ascii_alphabetic())
+            {
+                return None;
+            }
+            return Some(Self::Subdomain {
+                suffix: format!(".{domain}"),
+                port,
+            });
+        }
+        if entry.is_empty() || entry.contains('*') {
+            return None;
+        }
+        Some(Self::Exact(entry))
+    }
+}
 
 /// 运行时策略。启动时定一次，之后只读。
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Policy {
-    /// 小写化的允许项：可以是 `host:port`（精确）或纯主机名（任意端口）。
-    allowed_hosts: Vec<String>,
+    allowed_hosts: Vec<AllowedHost>,
 }
 
 impl Policy {
@@ -53,27 +85,56 @@ impl Policy {
             return false;
         }
         let hostname = host_name_of(&host);
-        self.allowed_hosts
-            .iter()
-            .any(|entry| entry == &host || entry == hostname)
+        self.allowed_hosts.iter().any(|entry| match entry {
+            AllowedHost::Exact(entry) => entry == &host || entry == hostname,
+            AllowedHost::Subdomain { suffix, port } => {
+                split_dns_host_port(&host).is_some_and(|(domain, actual_port)| {
+                    (port.is_none() || *port == actual_port)
+                        && domain.len() <= DNS_NAME_MAX_LEN
+                        && domain
+                            .strip_suffix(suffix.as_str())
+                            .is_some_and(is_dns_label)
+                })
+            }
+        })
     }
 }
 
 /// 解析 `BUDDY_SWITCH_ALLOWED_HOSTS`。
 ///
-/// 容错：空项 / 首尾空白 / 大小写都吃掉；`*` **不支持**（一个通配符就把这道防线变成装饰）。
+/// 接受精确主机和 `*.example.com[:port]`。忽略空项、裸 `*` 和无效通配符。
 pub fn parse_allowed_hosts(raw: Option<&str>) -> Policy {
     let mut allowed_hosts = Vec::new();
-    for entry in raw.unwrap_or_default().split(',') {
-        let entry = entry.trim().to_ascii_lowercase();
-        if entry.is_empty() || entry == "*" {
-            continue;
-        }
+    for entry in raw
+        .unwrap_or_default()
+        .split(',')
+        .filter_map(AllowedHost::parse)
+    {
         if !allowed_hosts.contains(&entry) {
             allowed_hosts.push(entry);
         }
     }
     Policy { allowed_hosts }
+}
+
+fn split_dns_host_port(value: &str) -> Option<(&str, Option<u16>)> {
+    let Some((host, port)) = value.split_once(':') else {
+        return Some((value, None));
+    };
+    if !port.bytes().all(|byte| byte.is_ascii_digit()) {
+        return None;
+    }
+    Some((host, Some(port.parse().ok()?)))
+}
+
+fn is_dns_label(label: &str) -> bool {
+    !label.is_empty()
+        && label.len() <= 63
+        && !label.starts_with('-')
+        && !label.ends_with('-')
+        && label
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
 }
 
 /// 取 `Host` 的主机名部分（去掉 `:port`，正确处理 IPv6 字面量）。
@@ -128,7 +189,7 @@ impl Deny {
             Deny::MissingHost => "请求缺少 Host 头，管理面拒绝处理。",
             Deny::HostNotAllowed => {
                 "管理面只接受本机访问。若确实要远程访问，请用环境变量 \
-                 BUDDY_SWITCH_ALLOWED_HOSTS 显式列出允许的主机（逗号分隔，可带端口），\
+                 BUDDY_SWITCH_ALLOWED_HOSTS 显式列出允许的主机（逗号分隔，可带端口或使用 *.example.com），\
                  并确保只有可信网络能连到该端口。"
             }
             Deny::CrossOrigin => "跨站请求被拒绝（Origin 与 Host 不同源）。",
@@ -306,9 +367,8 @@ mod tests {
         assert_eq!(ok(&policy, Method::GET, None), Err(Deny::MissingHost));
     }
 
-    /// 远程部署的逃生舱：必须是**显式**白名单，且 `*` 不被当成通配符。
     #[test]
-    fn allowed_hosts_is_an_explicit_list_never_a_wildcard() {
+    fn allowed_hosts_matches_exact_entries() {
         let policy = policy_with(Some(" 192.168.1.5:57890 , nas.local ,, "));
         assert!(ok(&policy, Method::GET, Some("192.168.1.5:57890")).is_ok());
         assert!(ok(&policy, Method::GET, Some("nas.local:57890")).is_ok());
@@ -317,12 +377,102 @@ mod tests {
             ok(&policy, Method::GET, Some("192.168.1.6:57890")),
             Err(Deny::HostNotAllowed)
         );
-        // `*` 被丢弃 ⇒ 不会变成「放行一切」。
-        let wildcard = policy_with(Some("*"));
+    }
+
+    #[test]
+    fn allowed_hosts_matches_one_subdomain_label_and_the_configured_port() {
+        let policy = policy_with(Some(" *.My-NAS.fnos.net:8443, *.other.example "));
+        for host in [
+            "a1b2c3-0.my-nas.fnos.net:8443",
+            "Another.MY-NAS.FNOS.NET:8443",
+            "app.other.example",
+            "app.other.example:9443",
+        ] {
+            assert_eq!(ok(&policy, Method::GET, Some(host)), Ok(()), "{host}");
+        }
+
+        for host in [
+            "my-nas.fnos.net:8443",
+            "app.other.example.invalid",
+            "app.not-my-nas.fnos.net:8443",
+            "nested.app.my-nas.fnos.net:8443",
+            "app.my-nas.fnos.net",
+            "app.my-nas.fnos.net:9443",
+            "app.other.example:invalid",
+            "-app.other.example",
+            "app_.other.example",
+        ] {
+            assert_eq!(
+                ok(&policy, Method::GET, Some(host)),
+                Err(Deny::HostNotAllowed),
+                "{host}"
+            );
+        }
+    }
+
+    #[test]
+    fn invalid_wildcards_do_not_grant_host_access() {
+        for pattern in [
+            "*",
+            "*:8443",
+            "*.com",
+            "*.127.0.0.1",
+            "foo*.example.com",
+            "*.*.example.com",
+            "*.example.com:65536",
+            "*.example.com:",
+        ] {
+            assert_eq!(policy_with(Some(pattern)), Policy::default(), "{pattern}");
+        }
+    }
+
+    #[test]
+    fn wildcard_hosts_still_require_same_origin_and_json_for_writes() {
+        let policy = policy_with(Some("*.my-nas.fnos.net"));
+        let host = Some("app.my-nas.fnos.net");
+        let same_origin = Some("https://app.my-nas.fnos.net");
+        let json = Some("application/json");
+        assert!(judge(
+            &policy,
+            &Method::POST,
+            host,
+            same_origin,
+            Some("same-origin"),
+            json
+        )
+        .is_ok());
         assert_eq!(
-            ok(&wildcard, Method::GET, Some("evil.example:57890")),
-            Err(Deny::HostNotAllowed),
-            "通配符必须被忽略，否则这道防线等于没有"
+            judge(
+                &policy,
+                &Method::POST,
+                host,
+                Some("https://other.my-nas.fnos.net"),
+                None,
+                json
+            ),
+            Err(Deny::CrossOrigin)
+        );
+        assert_eq!(
+            judge(
+                &policy,
+                &Method::POST,
+                host,
+                same_origin,
+                Some("cross-site"),
+                json
+            ),
+            Err(Deny::CrossOrigin)
+        );
+        assert_eq!(
+            judge(
+                &policy,
+                &Method::POST,
+                host,
+                same_origin,
+                Some("same-origin"),
+                Some("text/plain")
+            ),
+            Err(Deny::NotJson)
         );
     }
 

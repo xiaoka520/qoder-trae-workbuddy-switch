@@ -127,7 +127,7 @@ runner，再由 merge job 拼 manifest）。手动触发该工作流只产出 `e
 | `BUDDY_SWITCH_HOME` | `/data`（镜像内置） | **数据根目录**。账号库、网关 Key、签到/积分记录、备份都在它下面。 |
 | `BUDDY_SWITCH_HOST` | `0.0.0.0`（镜像内置） | 监听地址。CLI 原生默认是 `127.0.0.1`，容器里必须改成 `0.0.0.0` 才能从宿主访问。 |
 | `BUDDY_SWITCH_PORT` | `57890` | 监听端口。 |
-| `BUDDY_SWITCH_ALLOWED_HOSTS` | 空（只接受回环） | **额外**允许的 `Host`，逗号分隔、可带端口。**只有「跨机直连」才需要** —— 见下面「安全」段。填 `*` 无效（会被忽略）。 |
+| `BUDDY_SWITCH_ALLOWED_HOSTS` | 空（只接受回环） | **额外**允许的 `Host`，逗号分隔、可带端口。支持精确主机与 `*.example.com` 形式的单层子域名通配符。单独的 `*` 会被忽略。 |
 
 优先级：**命令行参数 > 环境变量 > 内置默认值**。即 `docker run … buddy-switch serve --port 8080`
 会覆盖 `BUDDY_SWITCH_PORT`。
@@ -189,8 +189,8 @@ docker run --rm -v buddy-switch-data:/data -v "$PWD:/backup" alpine \
 
 - 默认只发布到宿主机回环 `127.0.0.1:57890`（`docker-compose.yml` 里写死的）。
 - 服务端在监听**非回环**地址时会打印一条显式警告。
-- **管理面有来源校验**：只接受 `Host` 为 `127.0.0.1` / `localhost` / `::1` 的请求，
-  其余一律 `403`。这不是可选项 —— 它是 DNS rebinding 的**唯一**防线（见下面的说明）。
+- **管理面有来源校验**：默认接受 `Host` 为 `127.0.0.1` / `localhost` / `::1` 的请求。
+  其他主机须命中下方配置的白名单，否则返回 `403`。Host 校验用于防止 DNS rebinding。
 - 要跨机访问，三选一：
 
   1. **SSH 隧道**（推荐）：`ssh -L 57890:127.0.0.1:57890 <host>`，然后本地开
@@ -214,6 +214,17 @@ docker run --rm -v buddy-switch-data:/data -v "$PWD:/backup" alpine \
      environment:
        BUDDY_SWITCH_ALLOWED_HOSTS: "bs.example.com:57890"
      ```
+
+     飞牛 FN Connect 等反代会给 WebUI 分配变化的子域名，可以填设备专属域名的通配符：
+
+     ```yaml
+     environment:
+       BUDDY_SWITCH_ALLOWED_HOSTS: "*.my-nas.fnos.net"
+     ```
+
+     这里的 `*` 只匹配最左侧一个 DNS 标签，例如 `random-0.my-nas.fnos.net`。
+     要同时允许设备域名本身，可把 `my-nas.fnos.net` 作为单独一项加入。
+     如果模式写成 `*.my-nas.fnos.net:8443`，请求还须带相同端口。
   3. **直连**（不推荐）：`"57890:57890"` + 从别的机器访问 `http://<ip>:57890`。
      **必须**设 `BUDDY_SWITCH_ALLOWED_HOSTS=<ip 或域名>:57890`，否则一律 403。
 - **不要**在无鉴权的情况下把 `57890` 直接暴露到公网或不可信局域网。
