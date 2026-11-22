@@ -98,6 +98,8 @@ runner，再由 merge job 拼 manifest）。手动触发该工作流只产出 `e
 
 网关卡「无客户端」时照常可用 —— 页面上会有一行说明，那只是提示，不是禁用。
 
+WorkBuddy 的「网关 → 模型列表 → 重新识别」在容器中可以使用该区域账号池里的扫码账号。账号池有可用凭据时，保持「不指定（自动择优）」即可刷新。
+
 ### 容器内置 CLI
 
 镜像内的 `codebuddy` 是腾讯的 CodeBuddy Code，复用 Buddy Switch 国内版 WorkBuddy 的
