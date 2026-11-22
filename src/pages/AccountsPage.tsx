@@ -517,12 +517,14 @@ function RegionPanel({ region }: { region: Region }) {
     setDetailAccount(account);
     // ★ B5：顺带查一次**签到详情**（抽屉要显示「+100」+ 连签天数 + 日期列表）。
     //   此前只在批量接口里取了「是否已签到」，**详情从没查过** ⇒ 抽屉无从展示。
-    void api
-      .getCheckinStatus(account.id, region)
-      .then((entry) => setCheckinDetailMap((prev) => ({ ...prev, [account.id]: entry })))
-      .catch(() => {
-        /* 查询失败不阻断抽屉：签到区**不渲染**即可（不摆空数据）。 */
-      });
+    if (region === "cn") {
+      void api
+        .getCheckinStatus(account.id, region)
+        .then((entry) => setCheckinDetailMap((prev) => ({ ...prev, [account.id]: entry })))
+        .catch(() => {
+          /* 查询失败不阻断抽屉：签到区**不渲染**即可（不摆空数据）。 */
+        });
+    }
     // ★ 签到历史（近 7 天）：日期 + 结果来自签到日志；「获得积分」来自积分统计的签到事件。
     //   两者都**真实**取数；任一失败则该列回落「—」，不臆造。
     void api
@@ -1185,29 +1187,31 @@ function RegionPanel({ region }: { region: Region }) {
     if (!accounts.length || refreshingCredits || checkinAllRunning) return;
     setCheckinAllRunning(true);
     try {
-      try {
-        const res = await api.checkinAll(region);
-        const entries = res.accounts ?? [];
-        const success = entries.filter((e) => e.result === "success").length;
-        const already = entries.filter((e) => e.result === "already").length;
-        const failed = entries.filter((e) => e.result === "error").length;
-        const parts: string[] = [];
-        if (success > 0) parts.push(t("wbAccounts.toast.checkinBatchSuccess", { n: success }));
-        if (already > 0) parts.push(t("wbAccounts.toast.checkinBatchAlready", { n: already }));
-        if (failed > 0) parts.push(t("wbAccounts.toast.checkinBatchFailed", { n: failed }));
-        const summary = parts.length > 0 ? parts.join(t("shared.punct.comma")) : t("wbAccounts.toast.checkinNone");
-        if (entries.length > 0 && failed === entries.length) {
-          toast.error(t("wbAccounts.toast.checkinFailBatch"), { description: summary });
-        } else {
-          toast.success(t("wbAccounts.toast.checkinDone"), { description: summary });
+      if (region === "cn") {
+        try {
+          const res = await api.checkinAll(region);
+          const entries = res.accounts ?? [];
+          const success = entries.filter((e) => e.result === "success").length;
+          const already = entries.filter((e) => e.result === "already").length;
+          const failed = entries.filter((e) => e.result === "error").length;
+          const parts: string[] = [];
+          if (success > 0) parts.push(t("wbAccounts.toast.checkinBatchSuccess", { n: success }));
+          if (already > 0) parts.push(t("wbAccounts.toast.checkinBatchAlready", { n: already }));
+          if (failed > 0) parts.push(t("wbAccounts.toast.checkinBatchFailed", { n: failed }));
+          const summary = parts.length > 0 ? parts.join(t("shared.punct.comma")) : t("wbAccounts.toast.checkinNone");
+          if (entries.length > 0 && failed === entries.length) {
+            toast.error(t("wbAccounts.toast.checkinFailBatch"), { description: summary });
+          } else {
+            toast.success(t("wbAccounts.toast.checkinDone"), { description: summary });
+          }
+          // 批量签到后重查全部账号的今日签到状态，无需切换页面即反映最新结果
+          const next = await fetchTodayCheckinMap(accounts.map((account) => account.id), region);
+          if (Object.keys(next).length > 0) {
+            setCheckinMap((prev) => ({ ...prev, ...next }));
+          }
+        } catch (e) {
+          toast.error(t("wbAccounts.toast.batchCheckinFail"), { description: api.asError(e) });
         }
-        // 批量签到后重查全部账号的今日签到状态，无需切换页面即反映最新结果
-        const next = await fetchTodayCheckinMap(accounts.map((account) => account.id), region);
-        if (Object.keys(next).length > 0) {
-          setCheckinMap((prev) => ({ ...prev, ...next }));
-        }
-      } catch (e) {
-        toast.error(t("wbAccounts.toast.batchCheckinFail"), { description: api.asError(e) });
       }
       await refreshCredits(accounts.map((account) => account.id), { region });
       await loadTravelMap(accounts.map((account) => account.id));
@@ -2482,7 +2486,7 @@ function RegionPanel({ region }: { region: Region }) {
         batch={{
           selectedCount: selectedKeys.size,
           busy: batchBusy,
-          onCheckin: () => void batchCheckin(),
+          onCheckin: region === "cn" ? () => void batchCheckin() : undefined,
           onRefresh: () => void batchRefresh(),
           onExport:
             selectedAccounts.length > 0
@@ -2635,7 +2639,7 @@ function RegionPanel({ region }: { region: Region }) {
            ⇒ 这里只剩 4 个：两枚开关 + 两枚动作。
            动作行先关抽屉再开各自的弹层，避免两层遮罩叠在一起。 */
         moreTools={[
-          {
+          ...(region === "cn" ? [{
             key: "auto-checkin",
             icon: CalendarCheck,
             label: t("wbAccounts.page.autoCheckin"),
@@ -2656,7 +2660,7 @@ function RegionPanel({ region }: { region: Region }) {
                 )}
               </>
             ),
-          },
+          }] : []),
           {
             key: "auto-travel",
             icon: Plane,

@@ -2122,7 +2122,7 @@ export async function getCheckinStatusMap(
   region?: Region,
 ): Promise<Record<string, CheckinStatusEntry>> {
   const map: Record<string, CheckinStatusEntry> = {};
-  if (accountIds.length === 0) return map;
+  if (region === "global" || accountIds.length === 0) return map;
 
   if (demoModeEnabled) {
     // 演示数据是**按账号**的，逐个取（不发网络请求）。
