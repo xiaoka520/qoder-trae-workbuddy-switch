@@ -11,7 +11,9 @@
 //! 参考实现在 Python 侧用 `NO_PROXY=*` + 显式空 `ProxyHandler` 解决同一问题。
 //! 这里通过 [`trae_http_client`] 忽略环境代理，只接受用户在应用设置中明确指定的出口。
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
+
+use chrono::Timelike;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -334,6 +336,20 @@ pub struct CreditsDailySnapshot {
     pub date: String,
     pub total: f64,
     pub earned: f64,
+    pub consumed: f64,
+    #[serde(default)]
+    pub hourly: BTreeMap<u8, CreditsHourlySnapshot>,
+    #[serde(default)]
+    pub hourly_from_hour: Option<u8>,
+    #[serde(default)]
+    pub hourly_partial: bool,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct CreditsHourlySnapshot {
+    #[serde(default)]
+    pub earned: f64,
+    #[serde(default)]
     pub consumed: f64,
 }
 
@@ -839,12 +855,24 @@ pub fn record_daily_snapshot_for(variant: TraeVariant, non_checkin_earned: f64) 
         .map(|snapshot| snapshot.total);
     let consumed = inferred_daily_consumption(previous_total, total, earned);
 
+    let hour = chrono::Local::now().hour() as u8;
     match file
         .snapshots
         .iter_mut()
         .find(|snapshot| snapshot.date == today)
     {
         Some(existing) => {
+            if let Some(hourly_from_hour) = existing.hourly_from_hour {
+                let earned_delta = (earned - existing.earned).max(0.0);
+                let consumed_delta = (existing.total + earned_delta - total).max(0.0);
+                let hourly = existing.hourly.entry(hour).or_default();
+                hourly.earned = round2(hourly.earned + earned_delta);
+                hourly.consumed = round2(hourly.consumed + consumed_delta);
+                existing.hourly_from_hour = Some(hourly_from_hour.min(hour));
+            } else {
+                existing.hourly_from_hour = Some(hour);
+                existing.hourly_partial = existing.earned > 0.0 || existing.consumed > 0.0;
+            }
             existing.total = total;
             existing.earned = earned;
             existing.consumed = consumed;
@@ -854,6 +882,9 @@ pub fn record_daily_snapshot_for(variant: TraeVariant, non_checkin_earned: f64) 
             total,
             earned,
             consumed,
+            hourly: BTreeMap::new(),
+            hourly_from_hour: Some(hour),
+            hourly_partial: earned > 0.0 || consumed > 0.0,
         }),
     }
 

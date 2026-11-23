@@ -94,7 +94,21 @@ runner，再由 merge job 拼 manifest）。手动触发该工作流只产出 `e
 2. **粘贴授权凭据**（WorkBuddy）：把另一台机器上 `auth/workbuddy-desktop-ai.info`
    的内容整段粘进「添加账号 → 粘贴授权凭据」。后端用与「从本机导入」同一条解析 / 解锁链落库。
 3. **导入备份文件**：在装了客户端的机器上导出 JSON 备份，回到容器里导入。
-   备份含凭据，导入后刷新、签到、网关立即生效。
+   WorkBuddy / Qoder 的凭据导入后可立即用于刷新、签到和网关；Trae 备份不含设备私钥，
+   只能使用 access token 至其到期，之后需按下文重新授权或导入含设备密钥的客户端配置。
+
+### Docker 里的 Trae 登录限制
+
+Trae 的授权与自动续期依赖客户端 `storage.json` 中的设备私钥。容器没有 Trae 客户端时，
+不能独立完成 Trae OAuth，也不能只靠账号备份持续续期。可选路径是：
+
+- 在桌面 Trae 登录后，把包含设备私钥的 Trae 配置安全地提供给容器，并按上面的方式转发
+  `localhost:17388` 回调；或
+- 在桌面端重新登录并重新导出备份，再导入容器。若备份不含设备私钥，Trae 登录态只能使用到
+  access token 到期，之后必须回桌面重新登录并导入新备份。
+
+不要把 WorkBuddy、Qoder 或 Trae 的 GUI 客户端塞进 headless Docker 镜像。容器镜像只运行
+BuddySwitch 服务端，客户端在桌面运行；这也是 Docker 部署支持浏览器授权的前提边界。
 
 网关卡「无客户端」时照常可用 —— 页面上会有一行说明，那只是提示，不是禁用。
 
@@ -152,7 +166,7 @@ Buddy Switch 也会从同一目录读取 CLI 状态。自定义数据目录时�
 | `BUDDY_SWITCH_HOME` | `/data`（镜像内置） | **数据根目录**。账号库、网关 Key、签到/积分记录、备份都在它下面。 |
 | `BUDDY_SWITCH_HOST` | `0.0.0.0`（镜像内置） | 监听地址。CLI 原生默认是 `127.0.0.1`，容器里必须改成 `0.0.0.0` 才能从宿主访问。 |
 | `BUDDY_SWITCH_PORT` | `57890` | 监听端口。 |
-| `BUDDY_SWITCH_ALLOWED_HOSTS` | 空（只接受回环） | **额外**允许的 `Host`，逗号分隔、可带端口。支持精确主机与 `*.example.com` 形式的单层子域名通配符。单独的 `*` 会被忽略。 |
+| `BUDDY_SWITCH_ALLOWED_HOSTS` | 空（只接受回环） | **额外**允许的 `Host`，用逗号分隔。支持精确主机与 `*.example.com[:port]` 形式的单层子域名通配符。裸 `*` 无效。见下方「安全」段。 |
 
 优先级：**命令行参数 > 环境变量 > 内置默认值**。即 `docker run … buddy-switch serve --port 8080`
 会覆盖 `BUDDY_SWITCH_PORT`。
@@ -252,6 +266,9 @@ docker run --rm -v buddy-switch-data:/data -v "$PWD:/backup" alpine \
      如果模式写成 `*.my-nas.fnos.net:8443`，请求还须带相同端口。
   3. **直连**（不推荐）：`"57890:57890"` + 从别的机器访问 `http://<ip>:57890`。
      **必须**设 `BUDDY_SWITCH_ALLOWED_HOSTS=<ip 或域名>:57890`，否则一律 403。
+- 白名单支持精确主机名（可指定端口）以及 `*.example.com[:port]` 子域通配符。通配符匹配
+  `a.example.com` 这类单层子域。根域 `example.com` 或更深的子域需要单独列出，指定端口时必须完全一致。裸 `*`、
+  IP 通配符和中间含 `*` 的写法无效。只对你信任其所有子域的域名启用通配符。
 - **不要**在无鉴权的情况下把 `57890` 直接暴露到公网或不可信局域网。
 
 ### 为什么要有 Host 校验（升级后看到 403 就是它）
