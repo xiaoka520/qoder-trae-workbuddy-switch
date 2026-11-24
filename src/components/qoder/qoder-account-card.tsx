@@ -74,9 +74,10 @@ import {
   RefreshMenuGroup,
 } from "@/components/account-menu-parts";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatCredits as formatQuota } from "@/components/usage/format";
 import type { AccountRefreshKind } from "@/lib/account-refresh";
 import { shouldOpenAccountDetail } from "@/lib/account-open-guard";
-import type { QoderAccountView, QoderProgramStatus, QoderWebCreditPacks } from "@/lib/api";
+import type { QoderAccountView, QoderCreditsRow, QoderProgramStatus, QoderWebCreditPacks } from "@/lib/api";
 import { formatAbsoluteTime } from "@/lib/catalog-source";
 import { EXPIRY_TIP_MAX_HEIGHT } from "@/lib/credit-expiry";
 import { demoModeEnabled } from "@/lib/demo-mode";
@@ -206,7 +207,6 @@ export function QoderForeignBadge({ account }: { account: QoderAccountView }) {
   );
 }
 
-/** 一条账号的额度快照（来自 `qoder_credits`；取不到就是 `null`，**不编 0**）。 */
 /** 程序位四态 → 展示文案（四态是四种不同的用户动作，压成一个布尔会给错引导）。 */
 export function stateLabel(t: Translate, state: string): string {
   switch (state) {
@@ -221,10 +221,23 @@ export function stateLabel(t: Translate, state: string): string {
   }
 }
 
-export interface QoderCardCredits {
-  remaining: number;
-  total: number;
-  plan?: string | null;
+export function QoderAccountCreditValue({ row }: { row?: QoderCreditsRow | null }) {
+  const t = useT();
+  const remaining = formatQuota(row?.ok ? row.remaining : null);
+  if (remaining === "—") {
+    return (
+      <span className="text-muted-foreground">
+        {t("qoder.page.accounts.metric.creditsUnavailable")}
+      </span>
+    );
+  }
+  const total = formatQuota(row?.total);
+  return (
+    <span className="tabular-nums text-foreground">
+      {remaining}
+      {total === "—" ? null : <span className="text-muted-foreground"> / {total}</span>}
+    </span>
+  );
 }
 
 /**
@@ -420,8 +433,8 @@ export interface QoderAccountCardProps {
    * 别再写「没有回收站」。
    */
   onDelete?: (account: QoderAccountView) => void;
-  /** 额度快照；`null` / 不传 ⇒ 不渲染积分指标（无数据不渲染，不摆「0 / 0」）。 */
-  credits?: QoderCardCredits | null;
+  /** 单账号额度快照，包含上游读取结果。 */
+  credits?: QoderCreditsRow | null;
   /** 今日签到三态（`null` / 不传 = 未知）。 */
   checkinToday?: boolean | null;
   /**
@@ -508,7 +521,6 @@ export function QoderAccountCard({
   const uid = displayText(account.uid);
   const identity = uid ? `UID · ${uid}` : "—";
   const sourceLabel = qoderSourceLabel(t, account.source);
-  const credentialSummary = displayText(account.credentialSummary);
   /* 「当前登录」= **任一**程序位当前登着的就是这个 uid。
      判定放在卡片里（同一个 currentUid 要跟列表每条账号比），后端只给事实。 */
   const currentPrograms = (programs ?? []).filter((program) => program.currentUid === account.uid);
@@ -703,41 +715,25 @@ export function QoderAccountCard({
         ) : null}
       </div>
 
-      {/* body：积分指标（有额度快照才渲染）+ 凭据摘要 + 访问令牌掩码（**只给掩码**）。 */}
-      <section className="flex min-w-0 flex-1 flex-col gap-1">
-        {credits ? (
-          <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5 text-[11.5px]">
-            <span className="text-muted-foreground">
-              {t("qoder.page.accounts.metric.credits")}{" "}
-              <span className="font-medium tabular-nums text-foreground">
-                {formatCredits(credits.remaining)}
-              </span>
-            </span>
-            {credits.plan ? (
-              <span className="text-muted-foreground">
-                {t("qoder.page.accounts.metric.plan")}{" "}
-                <span className="text-foreground">{credits.plan}</span>
-              </span>
-            ) : null}
-            {/* 两级显示的**第二级入口**：聚合行照旧，逐包在浮层里（issue #111 R6）。 */}
-            <QoderPacksPopover
-              packs={packs}
-              loading={packsLoading}
-              onRequest={() => onRequestPacks?.(account)}
-              onWebLogin={() => onWebLogin?.(account)}
-              onReadPacks={() => onReadPacks?.(account)}
-            />
-          </div>
+      <section className="flex min-w-0 flex-1 flex-wrap content-start items-baseline gap-x-3 gap-y-0.5 text-[11.5px]">
+        <span className="text-muted-foreground">
+          {t("qoder.page.accounts.metric.availableCredits")}{" "}
+          <QoderAccountCreditValue row={credits} />
+        </span>
+        {credits?.ok && credits.plan ? (
+          <span className="text-muted-foreground">
+            {t("qoder.page.accounts.metric.plan")}{" "}
+            <span className="text-foreground">{credits.plan}</span>
+          </span>
         ) : null}
-        {credentialSummary ? (
-          <div className="truncate text-[11.5px] text-muted-foreground" title={credentialSummary}>
-            {credentialSummary}
-          </div>
-        ) : null}
-        {account.accessTokenMasked ? (
-          <div className="truncate font-mono text-[11px] text-muted-foreground" title={account.accessTokenMasked}>
-            {account.accessTokenMasked}
-          </div>
+        {credits?.ok ? (
+          <QoderPacksPopover
+            packs={packs}
+            loading={packsLoading}
+            onRequest={() => onRequestPacks?.(account)}
+            onWebLogin={() => onWebLogin?.(account)}
+            onReadPacks={() => onReadPacks?.(account)}
+          />
         ) : null}
       </section>
 

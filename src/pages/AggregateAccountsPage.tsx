@@ -1057,11 +1057,7 @@ export default function AggregateAccountsPage() {
           key={item.ref}
           account={item.data}
           onDelete={() => setConfirmDelete({ kind: "one", account: item })}
-          credits={
-            creditsRow && creditsRow.ok
-              ? { remaining: creditsRow.remaining ?? 0, total: creditsRow.total ?? 0, plan: creditsRow.plan ?? null }
-              : null
-          }
+          credits={creditsRow}
           checkinToday={checkinToday}
           programs={qoderPrograms.length ? qoderPrograms : null}
           creditPriority={item.data.uid === priorityIdByScope.get(`qoder:${item.scope}`)}

@@ -216,6 +216,8 @@ export const zh = {
      只是从来没画这枚徽章（WB / Trae 都有）。 */
   "qoder.page.accounts.chip.toolsInUse": "使用中 {n} 个工具",
   "qoder.page.accounts.metric.credits": "积分",
+  "qoder.page.accounts.metric.availableCredits": "可用积分",
+  "qoder.page.accounts.metric.creditsUnavailable": "暂未获取",
   // 到期徽章（issue #166）：黄=临期警告（7 天窗口，与 WB / Trae 同口径）。
   // 只报**最快到期的那一批**：天数与该批金额同批；逐批明细（绝对时刻）在 tooltip。
   "qoder.page.accounts.metric.expiringChip": "最近到期 {days}天 · {amount} 积分",

@@ -206,6 +206,8 @@ export const en = {
   "qoder.page.accounts.chip.priorityTip": "Recommended priority",
   "qoder.page.accounts.chip.toolsInUse": "{n} tools in use",
   "qoder.page.accounts.metric.credits": "Credits",
+  "qoder.page.accounts.metric.availableCredits": "Available credits",
+  "qoder.page.accounts.metric.creditsUnavailable": "Unavailable",
   // Expiry badge (issue #166): warning = expiring soon (7-day window, same as WB / Trae).
   // Badge reports the **closest-expiring batch only**; per-batch absolute timestamps go in the tooltip.
   "qoder.page.accounts.metric.expiringChip": "Closest expiry in {days} days · {amount} credits",
