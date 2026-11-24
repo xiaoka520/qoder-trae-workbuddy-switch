@@ -69,6 +69,7 @@ import { ClientLimitsCard } from "@/components/client-limits-card";
 import { RecycleBinSheet } from "@/components/recycle-bin-sheet";
 import {
   QoderAccountCard,
+  QoderAccountCreditValue,
   QoderAccountMenu,
   QoderForeignBadge,
   QoderStatusChips,
@@ -1281,14 +1282,8 @@ export default function QoderAccountsPage() {
     },
     {
       key: "credits",
-      header: t("qoder.page.accounts.metric.credits"),
-      render: (account) => {
-        const row = credits[account.uid];
-        if (!row || !row.ok) return <span className="text-muted-foreground">—</span>;
-        return (
-          <span className="tabular-nums">{formatCredits(row.remaining ?? 0)}</span>
-        );
-      },
+      header: t("qoder.page.accounts.metric.availableCredits"),
+      render: (account) => <QoderAccountCreditValue row={credits[account.uid]} />,
     },
     {
       key: "source",
@@ -1539,11 +1534,7 @@ export default function QoderAccountsPage() {
               packs={packOf(account.uid)}
               packsLoading={packsBusyOf(account.uid)}
               onRequestPacks={(target) => void qoderWebPacks.load(scope, target.uid)}
-              credits={
-                row && row.ok
-                  ? { remaining: row.remaining ?? 0, total: row.total ?? 0, plan: row.plan ?? null }
-                  : null
-              }
+              credits={row}
               checkinToday={checkinTodayOf(account)}
               programs={programs}
               /* ★ 2026-11-09：「优先」徽章（判据见上面的 `priorityAccountId`）。 */
