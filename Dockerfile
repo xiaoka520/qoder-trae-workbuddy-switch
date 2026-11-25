@@ -92,8 +92,7 @@ RUN apt-get update \
 RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin buddy
 
 COPY --from=builder /src/target/release/buddy-switch /usr/local/bin/buddy-switch
-COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+COPY --chmod=0755 docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 # 数据目录。CLI 对 `BUDDY_SWITCH_HOME` 是 **fail-closed** 的：指向不存在或非绝对的
 # 目录会**拒绝启动**（防的是「以为在隔离目录、实际写到真实数据上」）。
