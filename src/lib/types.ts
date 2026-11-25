@@ -2285,7 +2285,7 @@ export interface GatewayStatus {
   addr: string;
   /** 实际监听端口。 */
   port: number;
-  /** 是否允许非回环（局域网）监听。 */
+  /** 是否允许非回环监听。 */
   allowNonLoopback: boolean;
   /**
    * 后端返回的**根地址**（源自 snake_case `base_url`，形如 `http://127.0.0.1:57891`，**不含 `/v1`**）。

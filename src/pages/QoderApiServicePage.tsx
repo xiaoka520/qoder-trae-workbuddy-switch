@@ -798,7 +798,7 @@ export default function QoderApiServicePage() {
           {section === "u-pool" && <UnifiedGatewayView section="pool" onGoSection={goUnified} />}
       </GatewayShell>
 
-      {/* ---- 局域网风险确认 ---- */}
+      {/* ---- 监听所有IPv4地址的风险确认 ---- */}
       <Dialog open={riskOpen} onOpenChange={setRiskOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

@@ -18,7 +18,7 @@ export const zh = {
   "qoder.gateway.enableDesc": "在 127.0.0.1 上提供 OpenAI / Anthropic 兼容接口·上游为 {upstream}",
   "qoder.gateway.bindAddr": "监听地址",
   "qoder.gateway.bindLoopback": "仅本机（127.0.0.1）",
-  "qoder.gateway.bindLan": "局域网（0.0.0.0）",
+  "qoder.gateway.bindLan": "0.0.0.0（所有IPv4地址）",
   "qoder.gateway.port": "端口",
   "qoder.gateway.statusLabel": "状态",
   "qoder.gateway.running": "运行中",
@@ -26,7 +26,7 @@ export const zh = {
   // 四条网关都占 `/v1/chat/completions` ⇒ 端口必须错开；这句是把「为什么是 57895」讲明白。
   "qoder.gateway.noteLead": "各条网关都占用",
   "qoder.gateway.noteTail": "—— 端口必须错开（本页是 Qoder，默认 57895）。",
-  "qoder.gateway.lanWarning": "当前已允许局域网访问 —— 请确认所处网络可信。",
+  "qoder.gateway.lanWarning": "配置为监听所有IPv4地址。能访问网关并持有有效 API Key 的设备可以消耗你的 Qoder 额度。",
   "qoder.gateway.lastError": "最近一次失败",
   "qoder.gateway.refresh": "刷新",
   "qoder.gateway.savedStarted": "已保存并启动监听",
@@ -52,10 +52,10 @@ export const zh = {
   "qoder.gateway.overview.poolCount": "{count} 个条目",
   "qoder.gateway.overview.view": "查看",
 
-  // ---- 局域网风险确认 ----
-  "qoder.gateway.lanDialog.title": "允许局域网访问？",
+  // ---- 监听所有IPv4地址的风险确认 ----
+  "qoder.gateway.lanDialog.title": "监听所有IPv4地址？",
   "qoder.gateway.lanDialog.desc":
-    "监听 0.0.0.0 后，同一网络内的任何设备都可以用你的 Key 调用本网关（消耗你的 Qoder 额度）。仅在你确认网络可信时开启。",
+    "启用后，网关将在所有IPv4地址上监听（0.0.0.0）。能访问网关并持有有效 API Key 的设备可以消耗你的 Qoder 额度。请确认网络可信后再开启。",
   "qoder.gateway.lanDialog.cancel": "取消",
   "qoder.gateway.lanDialog.confirm": "确认开启",
 

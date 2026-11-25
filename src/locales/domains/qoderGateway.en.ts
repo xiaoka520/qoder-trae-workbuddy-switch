@@ -11,14 +11,14 @@ export const en = {
   "qoder.gateway.enableDesc": "Serve OpenAI / Anthropic compatible endpoints on 127.0.0.1 · upstream {upstream}",
   "qoder.gateway.bindAddr": "Listen address",
   "qoder.gateway.bindLoopback": "Local only (127.0.0.1)",
-  "qoder.gateway.bindLan": "LAN (0.0.0.0)",
+  "qoder.gateway.bindLan": "0.0.0.0 (All IPv4 addresses)",
   "qoder.gateway.port": "Port",
   "qoder.gateway.statusLabel": "Status",
   "qoder.gateway.running": "Running",
   "qoder.gateway.stopped": "Stopped",
   "qoder.gateway.noteLead": "Every gateway serves",
   "qoder.gateway.noteTail": "— the ports must differ (this page is Qoder, default 57895).",
-  "qoder.gateway.lanWarning": "LAN access is enabled — make sure this network is trusted.",
+  "qoder.gateway.lanWarning": "Configured to listen on all IPv4 addresses. Any device that can reach the gateway and has a valid API key can spend your Qoder quota.",
   "qoder.gateway.lastError": "Last error",
   "qoder.gateway.refresh": "Refresh",
   "qoder.gateway.savedStarted": "Saved and listening",
@@ -45,9 +45,9 @@ export const en = {
   "qoder.gateway.overview.view": "View",
 
   // ---- LAN risk dialog ----
-  "qoder.gateway.lanDialog.title": "Allow LAN access?",
+  "qoder.gateway.lanDialog.title": "Listen on all IPv4 addresses?",
   "qoder.gateway.lanDialog.desc":
-    "Binding 0.0.0.0 lets any device on this network call the gateway with your key (spending your Qoder quota). Only enable it on a trusted network.",
+    "The gateway will listen on all IPv4 addresses (0.0.0.0). Any device that can reach the gateway and has a valid API key can spend your Qoder quota. Enable this only on a trusted network.",
   "qoder.gateway.lanDialog.cancel": "Cancel",
   "qoder.gateway.lanDialog.confirm": "Enable",
 

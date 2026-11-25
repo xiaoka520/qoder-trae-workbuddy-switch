@@ -182,7 +182,7 @@ export const zh = {
   "trae.stats.api.gateway.desc": "开启后本机 AI 工具可通过下方地址调用 Trae 模型（上游 {upstream}）。",
   "trae.stats.api.gateway.bindAddr": "监听地址",
   "trae.stats.api.gateway.bindLoopback": "127.0.0.1（仅本机）",
-  "trae.stats.api.gateway.bindLan": "0.0.0.0（局域网）",
+  "trae.stats.api.gateway.bindLan": "0.0.0.0（所有IPv4地址）",
   "trae.stats.api.gateway.port": "监听端口",
   "trae.stats.api.gateway.statusLabel": "状态：",
   "trae.stats.api.gateway.running": "运行中",
@@ -192,7 +192,7 @@ export const zh = {
   "trae.stats.api.gateway.maxMode": "Max Mode（按各模型上限）",
   "trae.stats.api.gateway.maxModeDesc": "对支持 Max Mode 的模型注入 is_max_mode，清单按各模型自己的上限声明（不是统一 1M）；关闭后回到 __dev 通道的默认窗口。",
   "trae.stats.api.gateway.noteTail": "。",
-  "trae.stats.api.gateway.lanWarning": "局域网模式下，同网段任何设备拿到 Key 都能消耗你的 Trae 积分。",
+  "trae.stats.api.gateway.lanWarning": "配置为监听所有IPv4地址。能访问网关并持有有效 API Key 的设备可以消耗你的 Trae 积分。",
   "trae.stats.api.gateway.lastError": "最近一次错误",
 
   // ---- 接入地址卡 ----
@@ -226,9 +226,9 @@ export const zh = {
   "trae.stats.api.toast.dirOpened": "已打开 Trae 数据目录",
   "trae.stats.api.toast.dirOpenFailed": "打开数据目录失败",
 
-  // ---- 局域网风险确认 ----
-  "trae.stats.api.lanDialog.title": "允许局域网访问？",
-  "trae.stats.api.lanDialog.desc": "监听 0.0.0.0 后，同网段（含公共 Wi-Fi）的任何设备只要拿到 API Key，就能消耗你的 Trae 积分。请只在可信网络下开启。",
+  // ---- 监听所有IPv4地址的风险确认 ----
+  "trae.stats.api.lanDialog.title": "监听所有IPv4地址？",
+  "trae.stats.api.lanDialog.desc": "启用后，网关将在所有IPv4地址上监听（0.0.0.0）。能访问网关并持有有效 API Key 的设备可以消耗你的 Trae 积分。请确认网络可信后再开启。",
   "trae.stats.api.lanDialog.cancel": "取消",
   "trae.stats.api.lanDialog.confirm": "我已确认，开启",
 } as const;

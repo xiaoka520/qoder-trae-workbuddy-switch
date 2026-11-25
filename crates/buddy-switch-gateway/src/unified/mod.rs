@@ -362,8 +362,8 @@ pub async fn spawn_listener_with_state(
 
     if !ip.is_loopback() && !config.allow_non_loopback {
         return Err(anyhow::anyhow!(
-            "已拒绝监听非回环地址 {bind_addr}：局域网内任何设备都可消耗你的额度，\
-             请确认可信网络后，在设置中显式开启『允许局域网访问』再重试"
+            "已拒绝监听非回环地址 {bind_addr}。能访问网关并持有有效 API Key 的设备可以消耗你的额度。\
+             请确认网络可信后，在网关设置中确认非回环监听再重试"
         ));
     }
 
@@ -806,7 +806,7 @@ mod tests {
         };
         let message = error.to_string();
         assert!(
-            message.contains("允许局域网访问"),
+            message.contains("在网关设置中确认非回环监听"),
             "错误文案要给出出路：{message}"
         );
         std::fs::remove_dir_all(dir).unwrap();

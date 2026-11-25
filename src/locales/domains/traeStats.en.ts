@@ -178,7 +178,7 @@ export const en = {
   "trae.stats.api.gateway.desc": "Once enabled, local AI tools can call Trae models through the address below (upstream {upstream}).",
   "trae.stats.api.gateway.bindAddr": "Listen address",
   "trae.stats.api.gateway.bindLoopback": "127.0.0.1 (this machine only)",
-  "trae.stats.api.gateway.bindLan": "0.0.0.0 (LAN)",
+  "trae.stats.api.gateway.bindLan": "0.0.0.0 (All IPv4 addresses)",
   "trae.stats.api.gateway.port": "Listen port",
   "trae.stats.api.gateway.statusLabel": "Status:",
   "trae.stats.api.gateway.running": "Running",
@@ -188,7 +188,7 @@ export const en = {
   "trae.stats.api.gateway.maxMode": "Max Mode (per-model limits)",
   "trae.stats.api.gateway.maxModeDesc": "Inject is_max_mode for models that support it and advertise each model's own limit (not a fixed 1M). Turn off to use the __dev channel's default window.",
   "trae.stats.api.gateway.noteTail": ".",
-  "trae.stats.api.gateway.lanWarning": "In LAN mode, any device on the same network that gets hold of a key can spend your Trae credits.",
+  "trae.stats.api.gateway.lanWarning": "Configured to listen on all IPv4 addresses. Any device that can reach the gateway and has a valid API key can spend your Trae credits.",
   "trae.stats.api.gateway.lastError": "Most recent error",
 
   // ---- Endpoint card ----
@@ -219,8 +219,8 @@ export const en = {
   "trae.stats.api.toast.dirOpenFailed": "Failed to open the data directory",
 
   // ---- LAN risk confirmation ----
-  "trae.stats.api.lanDialog.title": "Allow LAN access?",
-  "trae.stats.api.lanDialog.desc": "Once listening on 0.0.0.0, any device on the same network — public Wi-Fi included — can spend your Trae credits as long as it holds an API key. Only enable this on a network you trust.",
+  "trae.stats.api.lanDialog.title": "Listen on all IPv4 addresses?",
+  "trae.stats.api.lanDialog.desc": "The gateway will listen on all IPv4 addresses (0.0.0.0). Any device that can reach the gateway and has a valid API key can spend your Trae credits. Enable this only on a trusted network.",
   "trae.stats.api.lanDialog.cancel": "Cancel",
   "trae.stats.api.lanDialog.confirm": "I understand, enable it",
 };
