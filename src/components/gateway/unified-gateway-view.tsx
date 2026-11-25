@@ -155,7 +155,7 @@ const UNIFIED_ERROR_SAMPLES = [
   { key: "oldPort", code: "400 namespace_not_parsed_here" },
 ] as const;
 
-/** 回环 / 局域网两个字面量（与三个既有网关页同款，避免各处写死字符串）。 */
+/** 回环 / 所有IPv4地址两个字面量（与三个既有网关页同款，避免各处写死字符串）。 */
 const LOOPBACK = "127.0.0.1";
 const LAN = "0.0.0.0";
 
@@ -288,15 +288,15 @@ export function UnifiedGatewayView({
   const [models, setModels] = useState<api.UnifiedModelsPreview | null>(null);
   /** 展开查看清单的命名空间（受控展开；不用 details/summary —— 本仓 AGENTS.md 禁止）。 */
   const [expandedNs, setExpandedNs] = useState<string[]>([]);
-  /** 开放局域网的**危险确认**（与三个既有网关页同一文案、同一形态）。 */
+  /** 监听所有IPv4地址的**危险确认**（与三个既有网关页同一文案、同一形态）。 */
   const [riskOpen, setRiskOpen] = useState(false);
 
   /**
    * 监听地址变更（下拉）。
    *
-   * ★ **开放局域网是危险动作，必须两步确认** —— 与三个既有网关页**同一文案、同一形态**
+   * ★ **监听所有IPv4地址是危险动作，必须两步确认** —— 与三个既有网关页**同一文案、同一形态**
    * （`ShieldAlert` + `destructive`）。改造前这里是一枚按钮、**点了直接生效**：
-   * 同一件危险事（暴露到局域网 ⇒ 任何设备都能消耗你的额度）别处两步、这里一步，是安全缺陷。
+   * 同一件危险事（非回环监听 ⇒ 能访问网关并持有有效 API Key 的设备可以消耗你的额度）别处两步、这里一步，是安全缺陷。
    */
   function onBindChange(next: string) {
     if (!snapshot || next === snapshot.config.bind_addr) return;
@@ -693,7 +693,7 @@ export function UnifiedGatewayView({
               {snapshot?.config.bind_addr}
             </div>
           </div>
-          {/* ★ 与三个既有网关页**同形**：下拉（不是按钮切换）+ 开放局域网走危险确认。
+          {/* ★ 与三个既有网关页**同形**：下拉（不是按钮切换）+ 监听所有IPv4地址走危险确认。
               按钮只能表达「下一步动作」，下拉能同时表达「当前值」。 */}
           <Select
             value={snapshot?.config.bind_addr ?? LOOPBACK}
@@ -1443,7 +1443,7 @@ export function UnifiedGatewayView({
       </Dialog>
 
       {/* ★ 非回环监听的危险确认 —— 与三个既有网关页**同一文案、同一形态**
-          （`ShieldAlert` + `destructive` 确认按钮）。少了它，暴露局域网就是**一键生效**。 */}
+          （`ShieldAlert` + `destructive` 确认按钮）。少了它，非回环监听就是**一键生效**。 */}
       <Dialog open={riskOpen} onOpenChange={setRiskOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

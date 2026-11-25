@@ -54,7 +54,7 @@ const MUTATIONS = {
     to: '  const dead = []; /* MUTATED */',
   },
   bindconfirm: {
-    desc: "开放局域网去掉危险确认（一键生效）",
+    desc: "监听所有IPv4地址去掉危险确认（一键生效）",
     from: '  if (next === UNI.bind) return;\n  const toLan = next === "0.0.0.0";\n  openConfirm({',
     to: '  if (next === UNI.bind) return;\n  const toLan = next === "0.0.0.0";\n  if (true) { UNI.bind = next; renderContent(); return; } /* MUTATED */\n  openConfirm({',
   },
@@ -257,14 +257,14 @@ function rowOf(doc, ns) {
     return label + " ← " + ids.join(",");
   });
 
-  check("概览分区：监听地址是 select.inp（既有类），选局域网要两步确认且取消会还原", () => {
+  check("概览分区：监听地址是 select.inp（既有类），选所有IPv4地址要两步确认且取消会还原", () => {
     const sel = dB.querySelector("select[data-uni-bind]");
     if (!sel) throw new Error("监听地址不是 <select>");
     if (!sel.classList.contains("inp")) throw new Error("没有复用既有的 .inp 类：" + sel.className);
     const before = winB.eval("UNI.bind");
     sel.value = "0.0.0.0";
     sel.dispatchEvent(new winB.Event("change", { bubbles: true }));
-    if (!dB.querySelector("#confirm-overlay").classList.contains("open")) throw new Error("开放局域网没有弹危险确认");
+    if (!dB.querySelector("#confirm-overlay").classList.contains("open")) throw new Error("监听所有IPv4地址没有弹危险确认");
     if (winB.eval("UNI.bind") !== before) throw new Error("确认前就已生效");
     click(winB, dB.querySelector('[data-act="confirm-cancel"]'));
     const sel2 = dB.querySelector("select[data-uni-bind]");

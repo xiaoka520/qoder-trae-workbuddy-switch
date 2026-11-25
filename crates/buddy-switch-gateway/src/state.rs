@@ -224,7 +224,7 @@ pub struct GatewayStatusView {
     pub bind_addr: String,
     /// 配置中的监听端口。
     pub port: u16,
-    /// 是否允许非回环（局域网）监听。
+    /// 是否允许非回环监听。
     pub allow_non_loopback: bool,
     /// 应用版本号。
     pub version: String,

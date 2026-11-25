@@ -3083,10 +3083,10 @@ function uniOverviewSection() {
       <button class="switch${running ? " on" : ""}" data-act="uni-toggle" aria-label="启用统一网关"></button></div>
     <div class="srow"><div class="lab"><b>接入地址</b><span class="mono">${baseV1}</span></div>
       <button class="btn sm" data-act="copy|${baseV1}">${ICON.copy}复制</button></div>
-    <div class="srow"><div class="lab"><b>监听地址</b><span class="mono">${esc(UNI.bind)}${UNI.bind === "0.0.0.0" ? " · 局域网内任何设备都能消耗你的额度" : ""}</span></div>
+    <div class="srow"><div class="lab"><b>监听地址</b><span class="mono">${esc(UNI.bind)}${UNI.bind === "0.0.0.0" ? " · 监听所有IPv4地址" : ""}</span></div>
       <select class="inp" data-uni-bind aria-label="监听地址">
         <option value="127.0.0.1"${UNI.bind === "127.0.0.1" ? " selected" : ""}>仅本机 127.0.0.1</option>
-        <option value="0.0.0.0"${UNI.bind === "0.0.0.0" ? " selected" : ""}>局域网 0.0.0.0</option>
+        <option value="0.0.0.0"${UNI.bind === "0.0.0.0" ? " selected" : ""}>0.0.0.0（所有IPv4地址）</option>
       </select></div>
     <div class="srow"><div class="lab"><b>端口</b><span>改端口需重启。别撞上既有端口：界面 57890 · WorkBuddy 57891 · 统一 57892 · hook 57893 · Trae 57894 · Qoder 57895</span></div>
       <input class="uni-port" type="text" inputmode="numeric" data-uni-port value="${UNI.port}" aria-label="统一网关端口"></div>
@@ -3098,7 +3098,7 @@ function uniOverviewSection() {
       <button class="btn sm" data-act="uni-err">看错误响应</button></div>
   </section>
   ${uniGuideCard()}
-  <p class="proto-note">原型说明 · 2026-10-15 <b>第五轮：统一网关的交互逐块对齐「独立网关」</b>。概览 = 卡「服务状态」+ 卡「接入说明」（与独立网关同形，协议 Tab 还是<b>同一个</b> gwApi 状态）；命名空间 = cat-bar 工具条 + 勾选卡 + 裸表 + 说明段；密钥 = 工具条 + 裸表 + 说明段（同一条工具条也补给了独立网关）。自造的 uni-note / uni-sec / uni-sum 三个容器<b>已删除</b>。<br>可试：① 左栏切「统一网关」⇒ 子导航换成 概览 / 命名空间 / 密钥（接入说明已并回概览）；② 概览关掉开关 ⇒ 出现「启用后生效」、结论徽标变「未启用」；③ 监听地址选「局域网」⇒ 危险确认，取消会还原；④ 命名空间分区点「看池」就地展开（不跳走），空池行给「去加账号」；⑤ 概览与独立网关<b>共用</b>同一个协议 Tab。深链 <span class="mono">?dest=gateway&amp;type=unified&amp;err=unified</span>。</p>`;
+  <p class="proto-note">原型说明 · 2026-10-15 <b>第五轮：统一网关的交互逐块对齐「独立网关」</b>。概览 = 卡「服务状态」+ 卡「接入说明」（与独立网关同形，协议 Tab 还是<b>同一个</b> gwApi 状态）；命名空间 = cat-bar 工具条 + 勾选卡 + 裸表 + 说明段；密钥 = 工具条 + 裸表 + 说明段（同一条工具条也补给了独立网关）。自造的 uni-note / uni-sec / uni-sum 三个容器<b>已删除</b>。<br>可试：① 左栏切「统一网关」⇒ 子导航换成 概览 / 命名空间 / 密钥（接入说明已并回概览）；② 概览关掉开关 ⇒ 出现「启用后生效」、结论徽标变「未启用」；③ 监听地址选「所有IPv4地址」⇒ 危险确认，取消会还原；④ 命名空间分区点「看池」就地展开（不跳走），空池行给「去加账号」；⑤ 概览与独立网关<b>共用</b>同一个协议 Tab。深链 <span class="mono">?dest=gateway&amp;type=unified&amp;err=unified</span>。</p>`;
 }
 
 /* ── 接入说明卡 ──
@@ -5843,7 +5843,7 @@ function openConfirm(o) {
   ok.className = "btn " + (o.danger === false ? "primary" : "danger");
   pendingConfirm = o.onOk || null;
   /* ★ `onCancel`：有些确认框的**控件已经显示新值**了（如监听地址下拉、开关），
-     取消时必须把它退回去 —— 否则用户看到「已开放局域网」而其实没有。
+     取消时必须把它退回去 —— 否则用户看到「已监听所有IPv4地址」而其实没有。
      这一步只能由调用方做，因为只有它知道该还原哪个控件。 */
   pendingConfirmCancel = o.onCancel || null;
   $("#confirm-overlay").classList.add("open");
@@ -6507,27 +6507,27 @@ document.addEventListener("change", (e) => {
   if (bind) onUniBindChange(bind.value);
 });
 
-/* 监听地址（下拉）：★ 开放局域网是**危险动作**，必须两步确认 ——
+/* 监听地址（下拉）：★ 监听所有IPv4地址是**危险动作**，必须两步确认 ——
    与三个既有网关页**同一文案、同一形态**（ShieldAlert + destructive）。
    ⚠️ 取消时要把下拉的显示值还原：控件已经显示新值了，不还原会让人以为已经生效。 */
 function onUniBindChange(next) {
   if (next === UNI.bind) return;
   const toLan = next === "0.0.0.0";
   openConfirm({
-    title: toLan ? "允许局域网访问？" : "改回仅本机？",
+    title: toLan ? "监听所有IPv4地址？" : "改回仅本机？",
     body: toLan
-      ? `<p>改为 <span class="mono">0.0.0.0</span> 后，<b>局域网内任何设备</b>都能通过你的机器调用模型，直接消耗你的账号额度。</p><p class="tiny muted">默认只监听 127.0.0.1。</p>`
+      ? `<p>启用后，网关将在所有IPv4地址上监听（<span class="mono">0.0.0.0</span>）。能访问网关并持有有效 API Key 的设备可以消耗你的账号额度。请确认网络可信后再开启。</p><p class="tiny muted">默认只监听 127.0.0.1。</p>`
       : `<p>监听地址改回 <span class="mono">127.0.0.1</span>，仅本机可访问。</p>`,
-    okLabel: toLan ? "确认开放" : "确认",
+    okLabel: toLan ? "确认开启" : "确认",
     danger: toLan,
     onOk: () => {
       UNI.bind = next;
-      toast("ok", `监听地址已改为 ${UNI.bind}`, toLan ? "局域网内任何设备都能消耗你的额度" : "仅本机可访问");
+      toast("ok", `监听地址已改为 ${UNI.bind}`, toLan ? "能访问网关并持有有效 API Key 的设备可以消耗你的额度。" : "仅本机可访问");
       renderContent();
     },
     /* ★ 取消必须**还原下拉的显示值**：控件已经显示新值了，只重绘内容不会把它退回去
        （下拉在概览卡里，`renderContent` 会重建它 —— 但为了不依赖重建时机，这里显式写回）。
-       不还原 = 用户以为「已经开放局域网」而其实没有，这是最坏的一种谎。 */
+       不还原 = 用户以为「已经监听所有IPv4地址」而其实没有，这是最坏的一种谎。 */
     onCancel: () => {
       const el = document.querySelector("[data-uni-bind]");
       if (el) el.value = UNI.bind;

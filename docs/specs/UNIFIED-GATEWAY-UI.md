@@ -65,10 +65,10 @@
 | 控件 | 交互 | 既有出处 |
 |:--|:--|:--|
 | 启用开关 `Switch` | `onCheckedChange` 即保存；保存中 `saving` 时旁边一枚 `<Loader2>`（**操作进行中**态，不是区块加载态）；保存成功给 `toast.success`（**不许静默**） | `ApiServicePage` 网关卡 |
-| 监听地址 `Select`（回环 / 局域网） | 选局域网 ⇒ **必须走危险确认 Dialog**（`ShieldAlert` + `destructive` 确认按钮），确认后才保存 | 同上 |
+| 监听地址 `Select`（回环 / 所有IPv4地址） | 选所有IPv4地址 ⇒ **必须走危险确认 Dialog**（`ShieldAlert` + `destructive` 确认按钮），确认后才保存 | 同上 |
 | 端口 `Input` | 输入期 `replace(/[^\d]/g, "")`；`onBlur` 或 Enter 提交；越界 / 撞已占端口 ⇒ `toast.error` + 回滚显示值 | 同上 |
 | 运行状态 | 圆点 + 文案（运行中 / 已停止），颜色 `text-success` / `text-muted-foreground` | 同上 |
-| 说明行 | 「为什么两个网关都要占 `/v1/chat/completions`」+ 局域网警示 | 同上 |
+| 说明行 | 「为什么两个网关都要占 `/v1/chat/completions`」+ 非回环监听警示 | 同上 |
 | 最近失败原因 | `status.lastError` 非空才渲染（**无数据不渲染**） | 同上 |
 | **裸模型名** | 一行**只读**文字（「不带前缀的模型名会被拒绝，并给出可用前缀清单」）+ 一个「看错误响应」按钮 | 本方案新增 |
 | **错误响应** | 点「看错误响应」开 **Drawer**（不是内联展开） | 见 3.3 |
@@ -207,7 +207,7 @@ Trae        [✓] trae-cn          [✓] trae-global
 |:--|:--|
 | 吊销 / 恢复密钥 | 单次确认 Dialog（轻） |
 | **删除密钥** | `destructive` Dialog（**不可逆**，明说不可恢复） |
-| **开放局域网** | `ShieldAlert` + `destructive` 按钮（与两个既有网关页**同一文案、同一形态**） |
+| **监听所有IPv4地址** | `ShieldAlert` + `destructive` 按钮（与两个既有网关页**同一文案、同一形态**） |
 | 取消勾选命名空间 | **不弹 Dialog**（可逆），但走 §4.1 的跨卡 warning |
 | 取消勾选**最后一条**命名空间 | **不弹 Dialog**，`toast.error` + 勾选态还原（**不要用 `disabled`**，见 §4.1） |
 

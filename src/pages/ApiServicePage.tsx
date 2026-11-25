@@ -400,7 +400,7 @@ export default function ApiServicePage() {
                 </div>
 
                 {/* ★ 与 Trae 页同构的说明行（2026-10-13 对齐）：讲清「默认端口为什么是 57891」
-                    （两个网关都占用 `/v1/chat/completions`，必须错开），并在局域网模式下给警示。
+                    （两个网关都占用 `/v1/chat/completions`，必须错开），并在监听所有IPv4地址时给出警示。
                     此前这条只出现在 Trae 侧，WB 用户看不到端口选择的理由。 */}
                 <div className="flex flex-wrap items-center gap-2 border-t border-border/60 px-5 py-3 text-xs text-muted-foreground">
                   {t("wbStats.gateway.noteLead")}
@@ -554,7 +554,7 @@ export default function ApiServicePage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             {/* ★ 与 Trae 页同构：危险确认的标题带警示图标（`ShieldAlert` / warning 色），
-                确认按钮用 `destructive` —— 两平台的「开放局域网」是同一个危险操作。 */}
+                确认按钮用 `destructive` —— 两平台的「监听所有IPv4地址」是同一个危险操作。 */}
             <DialogTitle className="flex items-center gap-2">
               <ShieldAlert className="size-4 text-warning" />
               {t("wbStats.gateway.allowLanTitle")}

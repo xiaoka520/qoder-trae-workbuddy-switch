@@ -329,10 +329,10 @@ export const zh = {
   "unifiedGateway.addr": "接入地址",
   "unifiedGateway.copyBaseUrl": "复制 Base URL",
   "unifiedGateway.loopback": "仅本机 127.0.0.1",
-  "unifiedGateway.lan": "局域网 0.0.0.0",
-  "unifiedGateway.allowLanTitle": "允许局域网访问？",
-  "unifiedGateway.allowLanDesc": "改为 0.0.0.0 后，局域网内任何设备都能通过你的机器调用模型，直接消耗你的账号额度。默认只监听 127.0.0.1。",
-  "unifiedGateway.confirmOpen": "确认开放",
+  "unifiedGateway.lan": "0.0.0.0（所有IPv4地址）",
+  "unifiedGateway.allowLanTitle": "监听所有IPv4地址？",
+  "unifiedGateway.allowLanDesc": "启用后，网关将在所有IPv4地址上监听（0.0.0.0）。能访问网关并持有有效 API Key 的设备可以消耗你的账号额度。请确认网络可信后再开启。默认只监听 127.0.0.1。",
+  "unifiedGateway.confirmOpen": "确认开启",
   "unifiedGateway.confirm": "确认",
   /* ── 账号池分区（跨平台只读汇总）──
      ★ 统一网关**没有自己的池**：它按命名空间前缀分派到三条产品线各自的池。
